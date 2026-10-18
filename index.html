@@ -403,6 +403,7 @@
       .lobby-seat .tag{ margin-left:auto; font-size:11.5px; font-weight:700; border-radius:5px; padding:2px 7px; background:rgba(217,169,43,.25); color:var(--gold-soft); flex:none; }
       .lobby-seat .tag.off{ background:rgba(207,46,31,.35); color:#ffb3a3; }
       .off-tag{ font-size:10.5px; font-weight:800; border-radius:4px; padding:1px 5px; background:#cf2e1f; color:#fff; flex:none; }
+      .guoshui-tag{ font-size:10.5px; font-weight:800; border-radius:4px; padding:1px 5px; background:#b26a00; color:#fff; flex:none; }
       .takeover{
         border:1px solid var(--gold); background:rgba(217,169,43,.2); color:var(--gold-soft);
         border-radius:6px; font-size:11px; font-weight:700; padding:2px 7px; flex:none;
@@ -652,6 +653,7 @@
           <p><b>计分（按分算，不换算番数）：</b></p>
           <p>· <b>自摸：</b>三个输家每人给赢家 4 分，赢家共得 12 分。</p>
           <p>· <b>点炮胡：</b>点炮的人给赢家 4 分，另外两家每人给赢家 2 分，赢家共得 8 分。</p>
+          <p><b>过水：</b>别人打出的牌你能胡却点了「过」，就进入过水状态——在轮到你下一次摸牌之前，不能胡任何人打出的牌；等你摸牌并打出后，过水自动解除，之后可以正常胡。自摸不受过水限制。</p>
           <p>· <b>杠（即时结算）：</b>暗杠其他三家每人给 4 分；明杠、补杠其他三家每人给 2 分，杠的当下就记入分数。</p>
           <p>· <b>花杠：</b>集齐一组花牌（春夏秋冬 或 梅兰竹菊）立即结算一次：开局起手就集齐（天花杠）其他三家每人给 4 分；牌局中途靠补花集齐的，其他三家每人给 2 分。花牌本身不另外计分。</p>
           <p><b>流局：</b>牌墙摸完没人胡，本局不计分。</p>
@@ -944,7 +946,7 @@
         name: spec.name, isBot: spec.ctrl === 'bot', ctrl: spec.ctrl,
         clientId: spec.clientId || null, online: spec.online !== false,
         av: spec.av || spec.name.charAt(0),
-        hand:[], melds:[], flowers:[], flowerKong:[false,false], discards:[], lastDrawn:null
+        hand:[], melds:[], flowers:[], flowerKong:[false,false], discards:[], lastDrawn:null, guoshui:false
       };
     }
     function singleSpec(){
@@ -1126,14 +1128,17 @@
     async function doTurn(pIdx, skip, gen){
       var p = S.players[pIdx];
       S.current = pIdx;
+      var drewTurn = false; // 过水解除条件：本回合摸过牌（含杠后补牌）
       // ---- draw phase ----
       if (skip === 'kong'){
         await sleep(p.isBot ? 1500 : 60);
         if (drawOne(pIdx, true) === null){ endDraw(); return {end:true}; }
+        drewTurn = true;
         logMsg(p.name + ' 杠后补牌');
       } else if (!skip){
         await sleep(p.isBot ? 1500 : 60);
         if (drawOne(pIdx, false) === null){ endDraw(); return {end:true}; }
+        drewTurn = true;
       }
       render();
       // ---- action phase (kong may chain) ----
@@ -1149,6 +1154,7 @@
             render(); await sleep(250);
             if (S.wall.length === 0){ endDraw(); return {end:true}; }
             if (drawOne(pIdx, true) === null){ endDraw(); return {end:true}; }
+            drewTurn = true;
             render(); continue;
           }
           discarded = act.tile;
@@ -1164,6 +1170,7 @@
             logMsg(p.name + ' 杠「' + tileLabel(ks[0].tile) + '」');
             render(); await sleep(1200);
             if (drawOne(pIdx, true) === null){ endDraw(); return {end:true}; }
+            drewTurn = true;
             render(); continue;
           }
           discarded = aiChooseDiscard(p);
@@ -1176,6 +1183,8 @@
       p.discards.push(discarded);
       markAnim('disc' + pIdx);
       S.lastDiscard = { player:pIdx, tile:discarded };
+      // 过水解除：本回合摸过牌并打出后，过水状态结束（碰/吃进来的回合没摸牌，不解除）
+      if (drewTurn && p.guoshui){ p.guoshui = false; logMsg(p.name + ' 摸打完毕，过水解除'); }
       logMsg(p.name + ' 打出 ' + tileNameText(discarded));
       render();
       // ---- claims ----
@@ -1255,6 +1264,7 @@
       // ron first, in turn order
       for (var i=0;i<3;i++){
         var idx = order[i], p = S.players[idx];
+        if (p.guoshui) continue; // 过水：下一次摸打前不能胡任何人打出的牌（自摸不受此限）
         if (!canWinWithTile(p.hand, p.melds.length, tile)) continue;
         if (!p.isBot){
           var ronBtns = [
@@ -1267,6 +1277,9 @@
             : await humanPrompt(ronBtns, ronHint);
           if (gen !== S.gen) return null;
           if (ans === 'hu') return {kind:'ron', player:idx};
+          // 有胡牌机会却选了「过」→ 进入过水，直到自己下一次摸牌并打出后解除
+          p.guoshui = true;
+          logMsg(p.name + ' 过了这张胡牌，进入过水（下一次摸打前不能胡）');
         } else {
           await sleep(1200);
           return {kind:'ron', player:idx};
@@ -1492,6 +1505,7 @@
         '<div class="chip-meta">' +
           '<div class="chip-name">' + p.name + '<span class="wind-badge">' + playerWind(i) + '</span>' +
           (off ? '<span class="off-tag">掉线</span>' : '') +
+          (p.guoshui ? '<span class="guoshui-tag">过水</span>' : '') +
           (off && MODE === 'host' ? '<button type="button" class="takeover" data-seat="' + i + '">机器人代打</button>' : '') + '</div>' +
           '<div class="chip-score"><span class="coin"></span><span id="score' + i + '">' + S.scores[i] + '</span> 分' +
           (d !== null && d !== 0 ? ' <span class="delta ' + (d>0?'plus':'minus') + '">' + (d>0?'+':'') + d + '</span>' : '') +
@@ -2095,7 +2109,7 @@
         pendingClaim:pc, pendingTurn:pt, pendingWid:pw,
         players:S.players.map(function(p){
           return { name:p.name, ctrl:p.ctrl, online:p.online, av:p.av, handCount:p.hand.length,
-            melds:p.melds, flowers:p.flowers, flowerKong:p.flowerKong, discards:p.discards };
+            melds:p.melds, flowers:p.flowers, flowerKong:p.flowerKong, discards:p.discards, guoshui:!!p.guoshui };
         }),
         reveal: S.over ? S.players.map(function(p){ return p.hand.slice(); }) : null
       };
@@ -2179,7 +2193,7 @@
           ctrl: i === ME ? 'local' : (sp.ctrl === 'bot' ? 'bot' : 'remote'),
           clientId:null, online:sp.online, av:sp.av,
           hand:hand, melds:sp.melds, flowers:sp.flowers, flowerKong:sp.flowerKong,
-          discards:sp.discards, lastDrawn: i === ME ? NP.myDrawn : null
+          discards:sp.discards, guoshui:!!sp.guoshui, lastDrawn: i === ME ? NP.myDrawn : null
         };
       });
       // drop stale local waits the host has already moved past
