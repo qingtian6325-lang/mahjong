@@ -346,6 +346,68 @@
       .modal .rules b{ color:#a32313; }
       .modal .close-x{ float:right; border:none; background:none; font-size:22px; color:#8a8271; line-height:1; padding:2px 4px; }
 
+      /* ---------- menu / lobby screens (single + online) ---------- */
+      .screen{
+        position:fixed; inset:0; z-index:70; display:none;
+        flex-direction:column; align-items:center; justify-content:flex-start;
+        overflow-y:auto; padding:26px 14px 30px;
+        background:linear-gradient(180deg,#106450 0%, #0a4636 55%, #063527 100%);
+        color:#eaf4ee;
+      }
+      .screen.show{ display:flex; }
+      .menu-card{ width:100%; max-width:430px; display:flex; flex-direction:column; gap:13px; margin:auto 0; }
+      .menu-title{ font-size:40px; font-weight:900; text-align:center; color:var(--gold-soft); text-shadow:0 3px 10px rgba(0,0,0,.5); letter-spacing:6px; }
+      .menu-sub{ text-align:center; font-size:13.5px; color:#bfe0cd; margin-top:-6px; }
+      .menu-btn{
+        border:1px solid rgba(217,169,43,.5); border-radius:14px; padding:15px 18px;
+        background:rgba(0,0,0,.3); color:#fff; font-size:19px; font-weight:800; text-align:left;
+        display:flex; flex-direction:column; gap:2px; box-shadow:0 4px 12px rgba(0,0,0,.35);
+      }
+      .menu-btn span{ font-size:12.5px; font-weight:400; color:#bfe0cd; }
+      .menu-btn.primary{ background:linear-gradient(160deg,#c93a24,#93301f); border-color:#ffb3a3; }
+      .menu-btn:active{ transform:translateY(1px); }
+      .online-panel{
+        display:none; flex-direction:column; gap:10px;
+        background:rgba(0,0,0,.28); border:1px solid rgba(217,169,43,.35);
+        border-radius:14px; padding:14px;
+      }
+      .online-panel.show{ display:flex; }
+      .online-panel label{ font-size:13px; color:#bfe0cd; display:flex; flex-direction:column; gap:5px; }
+      .online-panel input, .lobby-link{
+        background:#fdfcf7; color:#26221a; border:1px solid #b9ab8a; border-radius:9px;
+        padding:10px 12px; font-size:16px; font-family:inherit; width:100%;
+      }
+      .online-panel input.code{ text-transform:uppercase; letter-spacing:3px; font-weight:800; }
+      .join-row{ display:flex; gap:8px; }
+      .join-row input{ flex:1; min-width:0; }
+      .obtn{
+        border:none; border-radius:10px; padding:11px 16px; font-size:15.5px; font-weight:800; color:#fff;
+        background:#2f7fd0; box-shadow:0 3px 0 rgba(0,0,0,.35); white-space:nowrap;
+      }
+      .obtn.green{ background:#1d9e57; } .obtn.orange{ background:#e8930c; }
+      .obtn.ghost{ background:transparent; border:1px solid rgba(255,255,255,.5); box-shadow:none; }
+      .obtn:disabled{ opacity:.45; }
+      .obtn:active{ transform:translateY(2px); box-shadow:none; }
+      .net-status{ font-size:13px; color:#ffd7a8; min-height:18px; text-align:center; }
+      .lobby-code{ font-size:44px; font-weight:900; letter-spacing:10px; color:var(--gold-soft); text-align:center; text-shadow:0 3px 8px rgba(0,0,0,.5); }
+      .lobby-label{ font-size:13px; color:#bfe0cd; text-align:center; }
+      .lobby-link-row{ display:flex; gap:8px; width:100%; }
+      .lobby-link{ flex:1; min-width:0; font-size:13px; }
+      .lobby-list{ display:flex; flex-direction:column; gap:8px; width:100%; }
+      .lobby-seat{
+        display:flex; align-items:center; gap:10px; padding:9px 12px;
+        background:rgba(0,0,0,.28); border:1px solid rgba(217,169,43,.3); border-radius:11px;
+        font-size:15.5px; font-weight:700; color:#fff;
+      }
+      .lobby-seat.empty{ color:#8fb89e; font-weight:400; border-style:dashed; }
+      .lobby-seat .tag{ margin-left:auto; font-size:11.5px; font-weight:700; border-radius:5px; padding:2px 7px; background:rgba(217,169,43,.25); color:var(--gold-soft); flex:none; }
+      .lobby-seat .tag.off{ background:rgba(207,46,31,.35); color:#ffb3a3; }
+      .off-tag{ font-size:10.5px; font-weight:800; border-radius:4px; padding:1px 5px; background:#cf2e1f; color:#fff; flex:none; }
+      .takeover{
+        border:1px solid var(--gold); background:rgba(217,169,43,.2); color:var(--gold-soft);
+        border-radius:6px; font-size:11px; font-weight:700; padding:2px 7px; flex:none;
+      }
+
       /* ---------- flip / deal animations ---------- */
       @keyframes flipIn{ from{ transform:perspective(420px) rotateY(88deg); opacity:.35; } to{ transform:perspective(420px) rotateY(0deg); opacity:1; } }
       @keyframes flipDrawn{ from{ transform:perspective(420px) rotateY(88deg) translateY(-6px); opacity:.35; } to{ transform:perspective(420px) rotateY(0deg) translateY(-6px); opacity:1; } }
@@ -500,6 +562,7 @@
       <button class="tbtn" id="toolbarNext" style="display:none">下一局</button>
       <button class="tbtn" id="rulesBtn">玩法规则</button>
       <button class="tbtn" id="resetBtn">重新开始</button>
+      <button class="tbtn" id="leaveBtn" style="display:none">离开房间</button>
     </div>
 
     <div class="table-wrap">
@@ -591,8 +654,57 @@
         <button class="big-btn" id="rulesOk">知道了</button>
       </div>
     </div>
+
+    <!-- main menu: 单机 / 联机 -->
+    <div class="screen" id="menuScreen">
+      <div class="menu-card">
+        <div class="menu-title">打麻将</div>
+        <div class="menu-sub">四人对局 · 「飞」万能牌 · 花杠计分</div>
+        <button class="menu-btn primary" id="btnSingle">单机模式<span>你 + 3 个机器人（阿强 / 小美 / 老王），马上开打</span></button>
+        <button class="menu-btn" id="btnOnline">联机模式<span>建房间，把链接发给朋友加入；人不够机器人补位</span></button>
+        <div class="online-panel" id="onlinePanel">
+          <label>你的名字
+            <input id="nameInput" maxlength="8" placeholder="输入名字（不填用默认名）" autocomplete="off" />
+          </label>
+          <button class="obtn green" id="btnCreate">创建房间</button>
+          <label>加入朋友的房间
+            <span class="join-row">
+              <input id="codeInput" class="code" maxlength="4" placeholder="房号 如 7K2P" autocomplete="off" />
+              <button class="obtn" id="btnJoin">加入</button>
+            </span>
+          </label>
+          <div class="net-status" id="netStatus"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- room lobby -->
+    <div class="screen" id="lobbyScreen">
+      <div class="menu-card">
+        <div class="lobby-label">房间号（把链接发给朋友，点开就能加入）</div>
+        <div class="lobby-code" id="lobbyCode">----</div>
+        <div class="lobby-link-row">
+          <input class="lobby-link" id="lobbyLink" readonly />
+          <button class="obtn orange" id="btnCopyLink">复制链接</button>
+        </div>
+        <div class="lobby-list" id="lobbyPlayers"></div>
+        <button class="obtn green" id="btnStartGame" style="display:none">开始游戏（空位机器人补齐）</button>
+        <div class="net-status" id="lobbyStatus"></div>
+        <button class="obtn ghost" id="btnLeaveLobby">离开房间</button>
+      </div>
+    </div>
+
+    <!-- host gone -->
+    <div class="screen" id="hostGoneScreen">
+      <div class="menu-card">
+        <div class="menu-title" style="font-size:30px; letter-spacing:2px;">房主已离开</div>
+        <div class="menu-sub">房主的浏览器是主机，房主离开后这局没法继续了。</div>
+        <button class="obtn" id="btnHostGoneMenu">回主菜单</button>
+      </div>
+    </div>
     </div><!-- /#app -->
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
     'use strict';
     /* ================= tiles =================
@@ -807,17 +919,44 @@
       return res;
     }
 
+    /* ================= mode / online globals =================
+       MODE: 'single' | 'host' | 'guest'. The host browser runs the whole
+       engine; guests only mirror state broadcast over Supabase Realtime.
+       ME = this browser's seat index; VIEW rotates rendering so ME is
+       always at the bottom of the table. */
+    var MODE = 'single';
+    var ME = 0, VIEW = 0;
+    function seatPos(i){ return (i - VIEW + 4) % 4; }   // absolute seat -> screen position
+    function absAt(pos){ return (pos + VIEW) % 4; }     // screen position -> absolute seat
+    var SB_URL = 'https://hlfnvlyouhsvwhufxxqu.supabase.co';
+    var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsZm52bHlvdWhzdndodWZ4eHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExNzI5NDQsImV4cCI6MjEwNjc0ODk0NH0.k05JdhRfPDZYIe4ppkR8cUiXTIWJyrKQsMP5paiIvJg';
+    var NP = null; // online session state (host bookkeeping / guest mirror), null in single mode
+
     /* ================= state ================= */
     var S = null;
-    function newPlayer(name, isBot){
-      return { name:name, isBot:isBot, hand:[], melds:[], flowers:[], flowerKong:[false,false], discards:[], lastDrawn:null };
+    function newPlayer(spec){
+      return {
+        name: spec.name, isBot: spec.ctrl === 'bot', ctrl: spec.ctrl,
+        clientId: spec.clientId || null, online: spec.online !== false,
+        av: spec.av || spec.name.charAt(0),
+        hand:[], melds:[], flowers:[], flowerKong:[false,false], discards:[], lastDrawn:null
+      };
     }
-    function resetMatch(){
+    function singleSpec(){
+      return [
+        { name:'你', ctrl:'local', av:'你' },
+        { name:BOT_NAMES[0], ctrl:'bot', av:'强' },
+        { name:BOT_NAMES[1], ctrl:'bot', av:'美' },
+        { name:BOT_NAMES[2], ctrl:'bot', av:'王' }
+      ];
+    }
+    function resetMatch(spec){
       S = {
         gen: (S ? S.gen+1 : 1),
         scores:[0,0,0,0], lastDeltas:null, history:[],
         round:1, dealer:0, wall:[], players:[], current:-1,
-        lastDiscard:null, over:false, prompt:null, discardWait:null, selected:null
+        lastDiscard:null, over:false, prompt:null, discardWait:null, selected:null,
+        spec: spec || singleSpec()
       };
       startRound();
     }
@@ -828,7 +967,7 @@
       for (var f=35;f<=42;f++) wall.push(f);
       for (var i=wall.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=wall[i]; wall[i]=wall[j]; wall[j]=tmp; }
       S.wall = wall; S.over = false; S.lastDiscard = null; S.lastDeltas = null; S.selected = null;
-      S.players = [ newPlayer('你', false), newPlayer(BOT_NAMES[0], true), newPlayer(BOT_NAMES[1], true), newPlayer(BOT_NAMES[2], true) ];
+      S.players = S.spec.map(function(sp){ return newPlayer(sp); });
       for (var p=0;p<4;p++) for (var d=0; d<13; d++) S.players[p].hand.push(S.wall.shift());
       // flowers in the dealt hand: set aside, replace from wall tail
       for (var p2=0;p2<4;p2++){
@@ -892,6 +1031,7 @@
     /* big gold call-out in the middle of the table: 吃 / 碰 / 杠 / 花杠 / 胡 / 自摸 */
     var fxTimer = null;
     function showFx(text){
+      if (MODE === 'host' && NP){ NP.fxText = text; NP.fxSeq++; }
       var el = document.getElementById('fxText');
       if (!el) return;
       if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -915,12 +1055,12 @@
         p.flowers.push(t);
         checkFlowerSettle(pIdx, false); // 中途补花集齐一组 = 花杠，每家 2 分
         logMsg(p.name + ' 补花「' + FLOWER_NAMES[t-35] + '」，从牌墙尾补牌');
-        if (pIdx === 0) toast('你摸到花牌「' + FLOWER_NAMES[t-35] + '」，已补花');
+        if (p.ctrl === 'local') toast('你摸到花牌「' + FLOWER_NAMES[t-35] + '」，已补花');
         if (!S.wall.length){ render(); return null; }
         t = S.wall.pop();
       }
       p.hand.push(t); p.lastDrawn = t;
-      if (pIdx === 0) markAnim('draw0');
+      if (pIdx === ME) markAnim('draw0');
       return t;
     }
     function removeFromHand(p, tile, count){
@@ -1081,14 +1221,16 @@
       settleInstant(pIdx, k.kind === 'concealed' ? 4 : 2, k.kind === 'concealed' ? '暗杠' : '补杠');
     }
 
-    /* human action-phase wait: resolves {type:'discard',tile} | {type:'tsumo'} | {type:'kong',kong} */
+    /* human action-phase wait: resolves {type:'discard',tile} | {type:'tsumo'} | {type:'kong',kong}.
+       On the host, a remote guest's wait is resolved by their broadcast action. */
     function humanAction(pIdx, gen){
+      if (S.players[pIdx].ctrl === 'remote') return remoteDiscardWait(pIdx, gen);
       return new Promise(function(resolve){
         S.selected = null;
         S.discardWait = {
           resolve: resolve,
-          canTsumo: canWinHand(S.players[0].hand, S.players[0].melds.length),
-          kongs: S.wall.length ? findKongs(S.players[0]) : []
+          canTsumo: canWinHand(S.players[pIdx].hand, S.players[pIdx].melds.length),
+          kongs: S.wall.length ? findKongs(S.players[pIdx]) : []
         };
         render();
       });
@@ -1102,10 +1244,14 @@
         var idx = order[i], p = S.players[idx];
         if (!canWinWithTile(p.hand, p.melds.length, tile)) continue;
         if (!p.isBot){
-          var ans = await humanPrompt([
+          var ronBtns = [
             {id:'hu', label:'胡', cls:'win'},
             {id:'pass', label:'过', cls:'pass'}
-          ], '有人打了「' + tileNameText(tile) + '」，你可以胡牌！');
+          ];
+          var ronHint = '有人打了「' + tileNameText(tile) + '」，你可以胡牌！';
+          var ans = p.ctrl === 'remote'
+            ? await remoteClaimWait(idx, ronBtns, ronHint, gen)
+            : await humanPrompt(ronBtns, ronHint);
           if (gen !== S.gen) return null;
           if (ans === 'hu') return {kind:'ron', player:idx};
         } else {
@@ -1129,7 +1275,9 @@
             btns.push({id:'chi'+oi, label:'吃', cls:'chi', tiles:o.concat([tile]).sort(function(a,b){return a-b;})});
           });
           btns.push({id:'pass', label:'过', cls:'pass'});
-          var a2 = await humanPrompt(btns, jp.name + '，要吃碰「' + tileNameText(tile) + '」吗？');
+          var a2 = jp.ctrl === 'remote'
+            ? await remoteClaimWait(jdx, btns, '有人打出了「' + tileNameText(tile) + '」，要吃 / 碰 / 杠吗？', gen)
+            : await humanPrompt(btns, jp.name + '，要吃碰「' + tileNameText(tile) + '」吗？');
           if (gen !== S.gen) return null;
           if (a2 === 'pon') return {kind:'pon', player:jdx};
           if (a2 === 'kong') return {kind:'kong', player:jdx};
@@ -1201,6 +1349,10 @@
         title: (winnerIdx===0 ? '🎉 你胡牌了！' : w.name + ' 胡牌'),
         sub: type === 'tsumo' ? '自摸' : '点炮胡 · ' + S.players[discarderIdx].name + ' 打出「' + tileNameText(winTile) + '」'
       };
+      if (MODE === 'host' && NP){
+        NP.endSeq++;
+        NP.endInfo = { title: (S.players[winnerIdx].ctrl === 'local' ? '🎉 你胡牌了！' : w.name + ' 胡牌'), sub: endInfo.sub, winnerCtrl: S.players[winnerIdx].ctrl, winnerName: w.name };
+      }
       var g = S.gen;
       setTimeout(function(){ if (S.gen === g && S.over) showEnd(endInfo); }, 950);
       S.lastDiscard = null;
@@ -1211,6 +1363,7 @@
       S.history.push({ round:S.round, label:'流局', deltas:[0,0,0,0] });
       S.lastDeltas = [0,0,0,0];
       S.lastResult = { winner:-1, type:'draw', discarder:-1, winTile:null, deltas:[0,0,0,0] };
+      if (MODE === 'host' && NP){ NP.endSeq++; NP.endInfo = { title:'流局', sub:'牌墙摸完，没有人胡牌，本局不计分。' }; }
       render();
       showEnd({ title:'流局', sub:'牌墙摸完，没有人胡牌，本局不计分。' });
     }
@@ -1218,7 +1371,7 @@
     function syncNextBtn(){
       var b = document.getElementById('toolbarNext');
       var ov = document.getElementById('settleScreen');
-      if (b) b.style.display = (S && S.over && ov && !ov.classList.contains('show')) ? '' : 'none';
+      if (b) b.style.display = (S && S.over && ov && !ov.classList.contains('show') && MODE !== 'guest') ? '' : 'none';
     }
     function closeEndModal(){
       document.getElementById('settleScreen').classList.remove('show');
@@ -1275,7 +1428,7 @@
         p.melds.forEach(function(m){ m.tiles.forEach(function(t){ if (t===WILD) fei++; }); });
         var tot = totals[i];
         return '<div class="srow' + (res.winner===i ? ' win' : '') + '">' +
-          '<div class="srow-left"><div class="avatar av' + i + '">' + AV_CHARS[i] +
+          '<div class="srow-left"><div class="avatar av' + seatPos(i) + '">' + (p.av || AV_CHARS[i]) +
             (S.dealer===i ? '<span class="dealer-badge">庄</span>' : '') +
             (res.winner===i ? '<span class="dealer-badge win-badge">胜</span>' : '') + '</div>' +
             '<div class="srow-name">' + p.name + '</div><div class="srow-wind">' + playerWind(i) + '风</div></div>' +
@@ -1319,23 +1472,26 @@
     function chipHTML(i){
       var p = S.players[i];
       var d = S.lastDeltas ? S.lastDeltas[i] : null;
+      var off = (MODE !== 'single' && p.ctrl === 'remote' && !p.online);
       return '<div class="pchip' + (S.current===i && !S.over ? ' turn' : '') + '">' +
-        '<div class="avatar av' + i + '">' + AV_CHARS[i] +
+        '<div class="avatar av' + seatPos(i) + '">' + (p.av || AV_CHARS[i]) +
           (S.dealer===i ? '<span class="dealer-badge">庄</span>' : '') + '</div>' +
         '<div class="chip-meta">' +
-          '<div class="chip-name">' + p.name + '<span class="wind-badge">' + playerWind(i) + '</span></div>' +
+          '<div class="chip-name">' + p.name + '<span class="wind-badge">' + playerWind(i) + '</span>' +
+          (off ? '<span class="off-tag">掉线</span>' : '') +
+          (off && MODE === 'host' ? '<button type="button" class="takeover" data-seat="' + i + '">机器人代打</button>' : '') + '</div>' +
           '<div class="chip-score"><span class="coin"></span><span id="score' + i + '">' + S.scores[i] + '</span> 分' +
           (d !== null && d !== 0 ? ' <span class="delta ' + (d>0?'plus':'minus') + '">' + (d>0?'+':'') + d + '</span>' : '') +
           '</div>' +
         '</div></div>';
     }
     function renderSeat(i){
-      var p = S.players[i], el = document.getElementById('seat' + i);
+      var p = S.players[i], pos = seatPos(i), el = document.getElementById('seat' + pos);
       if (!el) return;
-      if (i === 0){
+      if (i === ME){
         el.innerHTML =
-          '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' + chipHTML(0) + flowersHTML(p) + '</div>' +
-          '<div class="melds">' + p.melds.map(function(m, mi){ return meldHTML(m, 0, mi); }).join('') + '</div>';
+          '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' + chipHTML(i) + flowersHTML(p) + '</div>' +
+          '<div class="melds">' + p.melds.map(function(m, mi){ return meldHTML(m, i, mi); }).join('') + '</div>';
         document.getElementById('handRow').innerHTML = handHTML();
         return;
       }
@@ -1347,14 +1503,14 @@
       }
       el.innerHTML =
         chipHTML(i) +
-        '<div class="seat-mid" style="' + (i===1 ? 'flex-direction:row-reverse;' : '') + '">' +
-          '<div class="backs' + (i===1 || i===3 ? ' side' : '') + '">' + backs + '</div>' +
+        '<div class="seat-mid" style="' + (pos===1 ? 'flex-direction:row-reverse;' : '') + '">' +
+          '<div class="backs' + (pos===1 || pos===3 ? ' side' : '') + '">' + backs + '</div>' +
           '<div class="melds">' + p.melds.map(function(m, mi){ return meldHTML(m, i, mi); }).join('') + '</div>' +
         '</div>' +
         flowersHTML(p);
     }
     function handHTML(){
-      var p = S.players[0];
+      var p = S.players[ME];
       var display = p.hand.slice();
       var drawnTile = null;
       if (p.lastDrawn !== null && display.indexOf(p.lastDrawn) >= 0){
@@ -1437,24 +1593,27 @@
       document.getElementById('roundNum').textContent = S.round;
       document.getElementById('dealerInfo').textContent = S.players[S.dealer].name;
       document.getElementById('wallCount').textContent = S.wall.length;
-      for (var ci=0; ci<4; ci++){
-        var cw = document.getElementById('cw' + ci);
-        if (cw){ cw.textContent = playerWind(ci); cw.classList.toggle('on', S.current===ci && !S.over); }
+      for (var pos=0; pos<4; pos++){
+        var cw = document.getElementById('cw' + pos);
+        var abs = absAt(pos);
+        if (cw){ cw.textContent = playerWind(abs); cw.classList.toggle('on', S.current===abs && !S.over); }
       }
       var hint = '';
-      if (!S.over && S.current >= 0) hint = S.current === 0 ? '轮到你行动' : '轮到 ' + S.players[S.current].name + ' 行动…';
+      if (!S.over && S.current >= 0) hint = S.current === ME ? '轮到你行动' : '轮到 ' + S.players[S.current].name + ' 行动…';
       document.getElementById('turnHint').textContent = hint;
       renderScoreboard();
       for (var i=0;i<4;i++) renderSeat(i);
       // all four discard pools live in the center area, around the diamond
-      for (var pi=0; pi<4; pi++){
-        var pool = document.getElementById('discards' + pi);
-        if (pool) pool.innerHTML = discardsHTML(S.players[pi], pi);
+      for (var pp=0; pp<4; pp++){
+        var pool = document.getElementById('discards' + pp);
+        var pAbs = absAt(pp);
+        if (pool) pool.innerHTML = discardsHTML(S.players[pAbs], pAbs);
       }
       renderActionBar();
       renderHistory();
       syncNextBtn();
       S.justDealt = false;
+      if (MODE === 'host' && NP && NP.started) scheduleSync();
     }
 
     /* ================= events ================= */
@@ -1493,18 +1652,34 @@
       logLines = []; logMsg('');
       startRound();
     }
-    document.getElementById('nextRoundBtn').addEventListener('click', startNextRound);
+    document.getElementById('nextRoundBtn').addEventListener('click', function(){
+      if (MODE === 'guest'){ toast('等房主开始下一局'); return; }
+      startNextRound();
+    });
     document.getElementById('toolbarNext').addEventListener('click', startNextRound);
-    document.getElementById('settleBackBtn').addEventListener('click', closeEndModal);
+    document.getElementById('settleBackBtn').addEventListener('click', function(){
+      if (MODE === 'single'){ closeEndModal(); return; }
+      // online: back to the room lobby (host ends the match for everyone)
+      document.getElementById('settleScreen').classList.remove('show');
+      if (MODE === 'host') hostBackToLobby();
+      else { NP.guestInLobby = true; showLobbyScreen(); }
+    });
     document.getElementById('settleChangeBtn').addEventListener('click', function(){
       document.getElementById('settleScreen').classList.remove('show');
+      if (MODE === 'guest'){ leaveRoom(); return; }
       logLines = [];
-      resetMatch();
+      resetMatch(S ? S.spec : undefined);
     });
     document.getElementById('resetBtn').addEventListener('click', function(){
       document.getElementById('settleScreen').classList.remove('show');
       logLines = [];
-      resetMatch();
+      resetMatch(S ? S.spec : undefined);
+    });
+    document.getElementById('leaveBtn').addEventListener('click', leaveRoom);
+    /* host converts a disconnected guest's seat to a bot */
+    document.addEventListener('click', function(e){
+      var b = e.target.closest ? e.target.closest('.takeover') : null;
+      if (b) hostTakeover(parseInt(b.getAttribute('data-seat'), 10));
     });
     document.getElementById('rulesBtn').addEventListener('click', function(){
       document.getElementById('rulesOverlay').classList.add('show');
@@ -1515,6 +1690,467 @@
     document.getElementById('rulesOk').addEventListener('click', function(){
       document.getElementById('rulesOverlay').classList.remove('show');
     });
+
+    /* ================= online: Supabase Realtime, host-authoritative =================
+       Only broadcast + presence on channel room-{code}; no database tables.
+       The host runs the engine; guests mirror the public state and receive
+       their own hand through targeted broadcasts. */
+    function $(id){ return document.getElementById(id); }
+    var CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    function genRoomCode(){
+      var s = '';
+      for (var i=0;i<4;i++) s += CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)];
+      return s;
+    }
+    function shareLink(code){ return 'https://qingtian6325-lang.github.io/mahjong/?room=' + code; }
+    function cleanName(s){ return (s || '').replace(/[<>&"'\s]/g, '').slice(0, 8); }
+    function sendB(event, payload){
+      if (NP && NP.channel) NP.channel.send({ type:'broadcast', event:event, payload:payload });
+    }
+
+    function connectRoom(code, asHost, name){
+      if (!window.supabase){ $('netStatus').textContent = '联机组件没加载成功（网络问题），请刷新页面重试'; return; }
+      if (NP) leaveRoom();
+      NP = {
+        code:code, isHost:asHost, myName:name,
+        myId:'c' + Math.random().toString(36).slice(2,10),
+        seats:[null,null,null,null], started:false,
+        seq:0, fxSeq:0, fxText:'', endSeq:0, endInfo:null, endShownSeq:0,
+        pending:{}, presenceKeys:{}, hostSeen:false, guestInLobby:false,
+        myHand:null, myDrawn:null, lastRoundSeen:-1, lobbySeats:null, syncTimer:null,
+        client:null, channel:null
+      };
+      if (asHost) NP.seats[0] = { clientId:NP.myId, name:name, online:true };
+      ME = 0; VIEW = 0;
+      var client = window.supabase.createClient(SB_URL, SB_KEY);
+      NP.client = client;
+      var ch = client.channel('room-' + code, { config:{ broadcast:{ self:false }, presence:{ key:NP.myId } } });
+      NP.channel = ch;
+      ch.on('presence', { event:'sync' }, onPresenceSync);
+      ch.on('broadcast', { event:'join' }, function(m){ if (NP && NP.isHost) onJoinMsg(m.payload); });
+      ch.on('broadcast', { event:'lobby' }, function(m){ if (NP && !NP.isHost) applyLobby(m.payload); });
+      ch.on('broadcast', { event:'assign' }, function(m){
+        if (NP && !NP.isHost && m.payload && m.payload.to === NP.myId){
+          ME = m.payload.seat; VIEW = ME;
+          if (NP.lobbySeats) renderLobbyList(NP.lobbySeats);
+        }
+      });
+      ch.on('broadcast', { event:'state' }, function(m){ if (NP && !NP.isHost) applyState(m.payload); });
+      ch.on('broadcast', { event:'hand' }, function(m){
+        if (NP && !NP.isHost && m.payload && m.payload.to === NP.myId){
+          NP.myHand = m.payload.hand; NP.myDrawn = m.payload.lastDrawn;
+          if (S && S.players[ME]){ S.players[ME].hand = NP.myHand.slice(); S.players[ME].lastDrawn = NP.myDrawn; render(); }
+        }
+      });
+      ch.on('broadcast', { event:'turn' }, function(m){ if (NP && !NP.isHost && m.payload && m.payload.to === NP.myId) guestOnTurn(m.payload); });
+      ch.on('broadcast', { event:'claim' }, function(m){ if (NP && !NP.isHost && m.payload && m.payload.to === NP.myId) guestOnClaim(m.payload); });
+      ch.on('broadcast', { event:'action' }, function(m){ if (NP && NP.isHost) onActionMsg(m.payload); });
+      ch.on('broadcast', { event:'claim-answer' }, function(m){ if (NP && NP.isHost) onClaimAnswerMsg(m.payload); });
+      ch.on('broadcast', { event:'lobby-open' }, function(){
+        if (NP && !NP.isHost){
+          NP.guestInLobby = true;
+          document.getElementById('settleScreen').classList.remove('show');
+          showLobbyScreen();
+        }
+      });
+      ch.on('broadcast', { event:'room-note' }, function(m){
+        if (NP && !NP.isHost && m.payload && m.payload.to === NP.myId){
+          toast(m.payload.text);
+          $('lobbyStatus').textContent = m.payload.text;
+        }
+      });
+      $('netStatus').textContent = '正在连接房间…';
+      ch.subscribe(function(status){
+        if (!NP) return;
+        if (status === 'SUBSCRIBED'){
+          ch.track({ name:name, role: asHost ? 'host' : 'guest' });
+          if (asHost){
+            MODE = 'host';
+            showLobbyScreen();
+            broadcastLobby();
+          } else {
+            MODE = 'guest';
+            sendB('join', { clientId:NP.myId, name:name });
+            showLobbyScreen();
+            $('lobbyStatus').textContent = '已加入，等房主开始游戏';
+          }
+          $('leaveBtn').style.display = '';
+          $('resetBtn').style.display = asHost ? '' : 'none';
+          $('netStatus').textContent = '';
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT'){
+          $('netStatus').textContent = '连接失败，请检查网络后重试';
+        }
+      });
+    }
+
+    /* ---------- presence: who is still in the room ---------- */
+    function onPresenceSync(){
+      if (!NP || !NP.channel) return;
+      var st = NP.channel.presenceState();
+      var keys = {};
+      Object.keys(st).forEach(function(k){ keys[k] = true; });
+      NP.presenceKeys = keys;
+      if (NP.isHost){
+        var changed = false;
+        for (var i=1;i<4;i++){
+          var s = NP.seats[i]; if (!s) continue;
+          var on = !!keys[s.clientId];
+          if (on === (s.online !== false)) continue;
+          s.online = on; changed = true;
+          if (S && S.players[i] && S.players[i].clientId === s.clientId) S.players[i].online = on;
+          if (!on){ logMsg(s.name + ' 掉线了'); toast(s.name + ' 掉线了'); settlePendingBot(i); }
+          else logMsg(s.name + ' 回来了');
+        }
+        if (changed){
+          if (!NP.started) broadcastLobby();
+          else { renderLobbyList(lobbyPayload().seats); if (S) render(); }
+        }
+      } else {
+        var hostHere = false;
+        Object.keys(st).forEach(function(k){
+          (st[k] || []).forEach(function(m){ if (m.role === 'host') hostHere = true; });
+        });
+        if (hostHere) NP.hostSeen = true;
+        else if (NP.hostSeen){
+          NP.hostSeen = false;
+          $('hostGoneScreen').classList.add('show');
+        } else if (!NP.started){
+          $('lobbyStatus').textContent = '还没找到房主…确认房号没填错，或等房主先建好房间';
+        }
+      }
+    }
+
+    /* ---------- host: lobby ---------- */
+    function seatPresent(clientId){ return !!(NP.presenceKeys && NP.presenceKeys[clientId]); }
+    function lobbyPayload(){
+      return { code:NP.code, started:NP.started, seats:NP.seats.map(function(s, i){
+        if (!s) return null;
+        return { name:s.name, clientId:s.clientId, online: seatOnline(i), host:i === 0 };
+      })};
+    }
+    function seatOnline(i){
+      var s = NP.seats[i]; if (!s) return false;
+      if (NP.started && S && S.players[i] && S.players[i].clientId === s.clientId) return !!S.players[i].online;
+      return seatPresent(s.clientId) || i === 0;
+    }
+    function broadcastLobby(){
+      sendB('lobby', lobbyPayload());
+      renderLobbyList(lobbyPayload().seats);
+    }
+    function sendAssign(seat){
+      var s = NP.seats[seat];
+      if (s) sendB('assign', { to:s.clientId, seat:seat });
+    }
+    function onJoinMsg(p){
+      if (!p || !p.clientId || typeof p.name !== 'string') return;
+      p.name = cleanName(p.name) || '玩家';
+      if (NP.started && S){
+        // mid-game rejoin: same name + currently-offline remote seat -> hand the seat back
+        for (var r=1;r<4;r++){
+          var pr = S.players[r];
+          if (pr.ctrl === 'remote' && pr.name === p.name && !pr.online){
+            pr.clientId = p.clientId; pr.online = true;
+            if (S.spec[r]) S.spec[r].clientId = p.clientId;
+            if (NP.seats[r]){ NP.seats[r].clientId = p.clientId; NP.seats[r].online = true; }
+            sendAssign(r);
+            doSync();
+            logMsg(p.name + ' 重新连上了');
+            render();
+            return;
+          }
+        }
+        sendB('room-note', { to:p.clientId, text:'这间房已经开局了，等房主回到大厅再加入' });
+        return;
+      }
+      var i, s;
+      for (i=0;i<4;i++){ s = NP.seats[i]; if (s && s.clientId === p.clientId){ sendAssign(i); return; } }
+      for (i=1;i<4;i++){
+        s = NP.seats[i];
+        if (s && s.name === p.name && !seatPresent(s.clientId)){
+          s.clientId = p.clientId; s.online = true;
+          sendAssign(i); broadcastLobby();
+          logMsg(p.name + ' 重新加入了房间');
+          return;
+        }
+      }
+      for (i=1;i<4;i++){
+        if (!NP.seats[i]){
+          NP.seats[i] = { clientId:p.clientId, name:p.name, online:true };
+          sendAssign(i); broadcastLobby();
+          logMsg(p.name + ' 加入了房间');
+          return;
+        }
+      }
+      sendB('room-note', { to:p.clientId, text:'房间已满（4 人），进不来了' });
+    }
+    function hostStartGame(){
+      var bi = 0;
+      var spec = NP.seats.map(function(s, i){
+        if (i === 0) return { name:NP.myName, ctrl:'local', av:NP.myName.charAt(0), clientId:NP.myId, online:true };
+        if (s) return { name:s.name, ctrl:'remote', av:s.name.charAt(0), clientId:s.clientId, online:s.online !== false };
+        var bn = BOT_NAMES[bi++];
+        return { name:bn, ctrl:'bot', av:bn.charAt(1) };
+      });
+      NP.started = true;
+      NP.guestInLobby = false;
+      document.getElementById('lobbyScreen').classList.remove('show');
+      logLines = [];
+      resetMatch(spec);
+      broadcastLobby();
+    }
+    function hostBackToLobby(){
+      NP.started = false;
+      if (S){ S.gen++; S.prompt = null; S.discardWait = null; }
+      Object.keys(NP.pending).forEach(function(k){
+        var pd = NP.pending[k];
+        if (pd.timer) clearTimeout(pd.timer);
+        pd.resolve(pd.type === 'claim' ? 'pass' : { type:'discard', tile: S && S.players[k] ? aiChooseDiscard(S.players[k]) : 0 });
+      });
+      NP.pending = {};
+      sendB('lobby-open', {});
+      broadcastLobby();
+      showLobbyScreen();
+    }
+    /* host turns a disconnected guest's seat over to a bot */
+    function hostTakeover(seat){
+      if (MODE !== 'host' || !NP || !S) return;
+      var p = S.players[seat];
+      if (!p || p.ctrl !== 'remote') return;
+      p.ctrl = 'bot'; p.isBot = true; p.online = true;
+      if (S.spec[seat]) S.spec[seat].ctrl = 'bot';
+      logMsg(p.name + ' 的座位改由机器人代打');
+      toast(p.name + ' 已转机器人代打');
+      settlePendingBot(seat);
+      render();
+    }
+
+    /* ---------- host: waiting on a remote guest ---------- */
+    function botDecision(seat){
+      var p = S.players[seat];
+      if (canWinHand(p.hand, p.melds.length)) return { type:'tsumo' };
+      var ks = findKongs(p);
+      if (ks.length && S.wall.length) return { type:'kong', kong:ks[0] };
+      return { type:'discard', tile:aiChooseDiscard(p) };
+    }
+    function settlePendingBot(seat){
+      if (!NP) return;
+      var pd = NP.pending[seat]; if (!pd) return;
+      delete NP.pending[seat];
+      if (pd.timer) clearTimeout(pd.timer);
+      pd.resolve(pd.type === 'claim' ? 'pass' : botDecision(seat));
+    }
+    function remoteDiscardWait(seat, gen){
+      return new Promise(function(resolve){
+        var p = S.players[seat];
+        if (!p.online || !p.clientId){ resolve(botDecision(seat)); return; }
+        var pd = { type:'discard', resolve:resolve, gen:gen, timer:null };
+        pd.timer = setTimeout(function(){
+          if (NP.pending[seat] === pd){
+            delete NP.pending[seat];
+            logMsg(p.name + ' 太久没出，机器人代打这一手');
+            resolve(botDecision(seat));
+          }
+        }, 120000);
+        NP.pending[seat] = pd;
+        sendB('turn', { to:p.clientId, canTsumo:canWinHand(p.hand, p.melds.length), kongs: S.wall.length ? findKongs(p) : [] });
+      });
+    }
+    function remoteClaimWait(seat, buttons, hint, gen){
+      return new Promise(function(resolve){
+        var p = S.players[seat];
+        if (!p.online || !p.clientId){ resolve('pass'); return; }
+        var pd = { type:'claim', resolve:resolve, gen:gen, timer:null };
+        pd.timer = setTimeout(function(){
+          if (NP.pending[seat] === pd){ delete NP.pending[seat]; resolve('pass'); }
+        }, 30000);
+        NP.pending[seat] = pd;
+        sendB('claim', { to:p.clientId, buttons:buttons, hint:hint });
+      });
+    }
+    function seatOfClient(clientId){
+      if (!S) return -1;
+      for (var i=0;i<4;i++) if (S.players[i].clientId === clientId) return i;
+      return -1;
+    }
+    function onActionMsg(p){
+      if (!p || !p.from || !NP.started || !S) return;
+      var seat = seatOfClient(p.from); if (seat < 0) return;
+      var pd = NP.pending[seat]; if (!pd || pd.type !== 'discard') return;
+      var pl = S.players[seat], act = p.act || {}, out = null;
+      if (act.type === 'tsumo' && canWinHand(pl.hand, pl.melds.length)) out = { type:'tsumo' };
+      else if (act.type === 'kong' && act.kong){
+        var ks = findKongs(pl);
+        for (var i=0;i<ks.length;i++) if (ks[i].kind === act.kong.kind && ks[i].tile === act.kong.tile){ out = { type:'kong', kong:ks[i] }; break; }
+      }
+      else if (act.type === 'discard' && pl.hand.indexOf(act.tile) >= 0) out = { type:'discard', tile:act.tile };
+      if (!out) return;
+      delete NP.pending[seat];
+      if (pd.timer) clearTimeout(pd.timer);
+      pd.resolve(out);
+    }
+    function onClaimAnswerMsg(p){
+      if (!p || !p.from || !S) return;
+      var seat = seatOfClient(p.from); if (seat < 0) return;
+      var pd = NP.pending[seat]; if (!pd || pd.type !== 'claim') return;
+      delete NP.pending[seat];
+      if (pd.timer) clearTimeout(pd.timer);
+      pd.resolve(typeof p.id === 'string' ? p.id : 'pass');
+    }
+
+    /* ---------- host: state broadcast ---------- */
+    function scheduleSync(){
+      if (!NP || NP.syncTimer) return;
+      NP.syncTimer = setTimeout(function(){ NP.syncTimer = null; doSync(); }, 60);
+    }
+    function buildState(){
+      var pc = -1, pt = -1;
+      Object.keys(NP.pending).forEach(function(k){
+        if (NP.pending[k].type === 'claim') pc = +k; else pt = +k;
+      });
+      return {
+        phase:'game', seq:++NP.seq,
+        round:S.round, dealer:S.dealer, current:S.current, wallCount:S.wall.length,
+        over:S.over, scores:S.scores, lastDeltas:S.lastDeltas, history:S.history,
+        lastDiscard:S.lastDiscard, lastResult:S.lastResult,
+        endSeq:NP.endSeq, endInfo:NP.endInfo,
+        fxSeq:NP.fxSeq, fxText:NP.fxText, logs:logLines.slice(),
+        pendingClaim:pc, pendingTurn:pt,
+        players:S.players.map(function(p){
+          return { name:p.name, ctrl:p.ctrl, online:p.online, av:p.av, handCount:p.hand.length,
+            melds:p.melds, flowers:p.flowers, flowerKong:p.flowerKong, discards:p.discards };
+        }),
+        reveal: S.over ? S.players.map(function(p){ return p.hand.slice(); }) : null
+      };
+    }
+    function doSync(){
+      if (MODE !== 'host' || !NP || !NP.started || !S) return;
+      sendB('state', buildState());
+      for (var i=0;i<4;i++){
+        var p = S.players[i];
+        if (p.ctrl === 'remote' && p.clientId)
+          sendB('hand', { to:p.clientId, hand:p.hand.slice(), lastDrawn:p.lastDrawn });
+      }
+    }
+
+    /* ---------- guest: mirror the host's state ---------- */
+    function applyLobby(p){
+      if (!p) return;
+      NP.lobbySeats = p.seats;
+      NP.started = !!p.started;
+      renderLobbyList(p.seats);
+    }
+    function guestOnTurn(p){
+      if (!S) return;
+      S.selected = null;
+      S.discardWait = {
+        canTsumo: !!p.canTsumo, kongs: p.kongs || [],
+        resolve: function(act){ sendB('action', { from:NP.myId, act:act }); }
+      };
+      render();
+    }
+    function guestOnClaim(p){
+      if (!S) return;
+      S.prompt = {
+        buttons: p.buttons || [], hint: p.hint || '',
+        resolve: function(id){ sendB('claim-answer', { from:NP.myId, id:id }); }
+      };
+      render();
+    }
+    function applyState(snap){
+      if (!snap || !NP) return;
+      if (NP.guestInLobby){
+        var newRound = !snap.over && (snap.round !== NP.lastRoundSeen || snap.history.length < (NP.lastHistLen || 0));
+        if (!newRound) return; // stay in the lobby until the host starts a fresh round
+      }
+      NP.guestInLobby = false;
+      NP.lastRoundSeen = snap.round;
+      NP.lastHistLen = snap.history.length;
+      if (!S){
+        S = { gen:1, scores:[0,0,0,0], lastDeltas:null, history:[], round:1, dealer:0, wall:[],
+          players:[], current:-1, lastDiscard:null, over:false, prompt:null, discardWait:null,
+          selected:null, spec:singleSpec() };
+      }
+      S.round = snap.round; S.dealer = snap.dealer; S.current = snap.current; S.over = snap.over;
+      S.scores = snap.scores; S.lastDeltas = snap.lastDeltas; S.history = snap.history;
+      S.lastDiscard = snap.lastDiscard; S.lastResult = snap.lastResult;
+      S.wall = new Array(snap.wallCount); // only its length is read on a guest
+      S.players = snap.players.map(function(sp, i){
+        var hand;
+        if (snap.reveal) hand = snap.reveal[i].slice();
+        else if (i === ME) hand = NP.myHand ? NP.myHand.slice() : [];
+        else { hand = []; for (var k=0;k<sp.handCount;k++) hand.push(0); }
+        return {
+          name:sp.name, isBot: sp.ctrl === 'bot' && i !== ME,
+          ctrl: i === ME ? 'local' : (sp.ctrl === 'bot' ? 'bot' : 'remote'),
+          clientId:null, online:sp.online, av:sp.av,
+          hand:hand, melds:sp.melds, flowers:sp.flowers, flowerKong:sp.flowerKong,
+          discards:sp.discards, lastDrawn: i === ME ? NP.myDrawn : null
+        };
+      });
+      // drop stale local waits the host has already moved past
+      if (S.prompt && snap.pendingClaim !== ME) S.prompt = null;
+      if (S.discardWait && snap.pendingTurn !== ME) S.discardWait = null;
+      logLines = snap.logs.slice();
+      var logEl = document.getElementById('log');
+      if (logEl) logEl.innerHTML = logLines.map(function(x){ return '<div>' + x + '</div>'; }).join('');
+      if (snap.fxSeq !== NP.fxSeq){ NP.fxSeq = snap.fxSeq; if (snap.fxText) showFx(snap.fxText); }
+      $('menuScreen').classList.remove('show');
+      $('lobbyScreen').classList.remove('show');
+      render();
+      if (snap.over && snap.endInfo && NP.endShownSeq !== snap.endSeq){
+        NP.endShownSeq = snap.endSeq;
+        var res = snap.lastResult || { winner:-1 };
+        var title = res.winner < 0 ? '流局'
+          : (res.winner === ME ? '🎉 你胡牌了！' : snap.players[res.winner].name + ' 胡牌');
+        showEnd({ title:title, sub:snap.endInfo.sub });
+      }
+      if (!snap.over) document.getElementById('settleScreen').classList.remove('show');
+    }
+
+    /* ---------- screens ---------- */
+    function renderLobbyList(seats){
+      var el = $('lobbyPlayers'); if (!el || !seats) return;
+      var botNames = BOT_NAMES, bi = 0;
+      el.innerHTML = seats.map(function(s){
+        if (!s) return '<div class="lobby-seat empty"><span>空位</span><span class="tag">机器人「' + botNames[bi++ % 3] + '」补位</span></div>';
+        return '<div class="lobby-seat"><span>' + s.name + '</span>' +
+          (s.host ? '<span class="tag">房主</span>' : '') +
+          (s.online === false ? '<span class="tag off">掉线</span>' : '<span class="tag">在线</span>') + '</div>';
+      }).join('');
+      var isHostNow = !!(NP && NP.isHost);
+      $('btnStartGame').style.display = isHostNow && !(NP && NP.started) ? '' : 'none';
+      if (isHostNow) $('lobbyStatus').textContent = '把链接发给朋友，等人来齐点开始；人不够也没关系，空位机器人补。';
+      else if (!NP || !NP.started) $('lobbyStatus').textContent = '等房主开始游戏…';
+    }
+    function showLobbyScreen(){
+      if (!NP) return;
+      $('menuScreen').classList.remove('show');
+      $('hostGoneScreen').classList.remove('show');
+      $('lobbyScreen').classList.add('show');
+      $('lobbyCode').textContent = NP.code;
+      $('lobbyLink').value = shareLink(NP.code);
+      if (NP.isHost) renderLobbyList(lobbyPayload().seats);
+      else if (NP.lobbySeats) renderLobbyList(NP.lobbySeats);
+      else $('lobbyPlayers').innerHTML = '<div class="lobby-seat empty"><span>正在加入…</span></div>';
+    }
+    function showMenuScreen(){
+      $('lobbyScreen').classList.remove('show');
+      $('hostGoneScreen').classList.remove('show');
+      $('menuScreen').classList.add('show');
+    }
+    function leaveRoom(){
+      if (NP && NP.channel && NP.client){
+        try { NP.channel.untrack(); } catch(e){}
+        try { NP.client.removeChannel(NP.channel); } catch(e){}
+      }
+      NP = null;
+      MODE = 'single'; ME = 0; VIEW = 0;
+      if (S){ S.gen++; S.prompt = null; S.discardWait = null; }
+      $('leaveBtn').style.display = 'none';
+      $('resetBtn').style.display = '';
+      document.getElementById('settleScreen').classList.remove('show');
+      showMenuScreen();
+    }
 
     /* measured visible-viewport size for the rotated portrait frame (see CSS):
        innerWidth/innerHeight (and visualViewport) already exclude the
@@ -1534,7 +2170,62 @@
     if (window.visualViewport) window.visualViewport.addEventListener('resize', fitViewport);
     fitViewport();
 
-    resetMatch();
+    /* ================= menu wiring ================= */
+    function myDisplayName(){
+      var n = cleanName($('nameInput').value);
+      return n || ('玩家' + Math.floor(10 + Math.random()*90));
+    }
+    $('btnSingle').addEventListener('click', function(){
+      MODE = 'single'; ME = 0; VIEW = 0; NP = null;
+      $('menuScreen').classList.remove('show');
+      $('leaveBtn').style.display = 'none';
+      $('resetBtn').style.display = '';
+      logLines = [];
+      resetMatch();
+    });
+    $('btnOnline').addEventListener('click', function(){
+      $('onlinePanel').classList.toggle('show');
+    });
+    $('btnCreate').addEventListener('click', function(){
+      connectRoom(genRoomCode(), true, myDisplayName());
+    });
+    $('btnJoin').addEventListener('click', function(){
+      var code = ($('codeInput').value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+      if (code.length !== 4){ $('netStatus').textContent = '房号是 4 位字母/数字，先填对房号'; return; }
+      connectRoom(code, false, myDisplayName());
+    });
+    $('btnCopyLink').addEventListener('click', function(){
+      var inp = $('lobbyLink');
+      inp.select(); inp.setSelectionRange(0, 9999);
+      function done(){ toast('链接已复制，发给朋友吧'); }
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(inp.value).then(done, function(){
+          try { document.execCommand('copy'); done(); }
+          catch(e){ toast('复制失败，长按链接手动复制'); }
+        });
+      } else {
+        try { document.execCommand('copy'); done(); }
+        catch(e){ toast('复制失败，长按链接手动复制'); }
+      }
+    });
+    $('btnStartGame').addEventListener('click', hostStartGame);
+    $('btnLeaveLobby').addEventListener('click', leaveRoom);
+    $('btnHostGoneMenu').addEventListener('click', leaveRoom);
+
+    /* landing: main menu first; a ?room=XXXX link goes straight to the join flow */
+    (function(){
+      showMenuScreen();
+      var roomParam = null;
+      try { roomParam = new URLSearchParams(window.location.search).get('room'); } catch(e){}
+      if (roomParam){
+        var code = (roomParam || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+        if (code.length === 4){
+          $('codeInput').value = code;
+          $('onlinePanel').classList.add('show');
+          $('netStatus').textContent = '你打开了房间 ' + code + ' 的邀请链接，填好名字点「加入」就行';
+        }
+      }
+    })();
     </script>
   </body>
 </html>
