@@ -951,6 +951,14 @@
       ];
     }
     function resetMatch(spec){
+      // wake any host-side waits left over from the previous match so their
+      // turn loops die on the gen check instead of lingering as zombies
+      if (NP && NP.pending){
+        Object.keys(NP.pending).forEach(function(k){
+          var opd = clearPending(k);
+          if (opd) opd.resolve(opd.type === 'claim' ? 'pass' : { type:'discard', tile:0 });
+        });
+      }
       S = {
         gen: (S ? S.gen+1 : 1),
         scores:[0,0,0,0], lastDeltas:null, history:[],
@@ -1662,7 +1670,7 @@
       // online: back to the room lobby (host ends the match for everyone)
       document.getElementById('settleScreen').classList.remove('show');
       if (MODE === 'host') hostBackToLobby();
-      else { NP.guestInLobby = true; showLobbyScreen(); }
+      else { NP.guestInLobby = true; NP.lobbySeq = NP.lastSeq || 0; NP.answered = null; showLobbyScreen(); }
     });
     document.getElementById('settleChangeBtn').addEventListener('click', function(){
       document.getElementById('settleScreen').classList.remove('show');
@@ -1717,7 +1725,8 @@
         seats:[null,null,null,null], started:false,
         seq:0, fxSeq:0, fxText:'', endSeq:0, endInfo:null, endShownSeq:0,
         pending:{}, presenceKeys:{}, hostSeen:false, guestInLobby:false,
-        myHand:null, myDrawn:null, lastRoundSeen:-1, lobbySeats:null, syncTimer:null,
+        myHand:null, myDrawn:null, lastRoundSeen:-1, lastHistLen:0, lobbySeats:null, syncTimer:null,
+        lastSeq:0, lobbySeq:0, answered:null, waitSeq:0,
         client:null, channel:null
       };
       if (asHost) NP.seats[0] = { clientId:NP.myId, name:name, online:true };
@@ -1745,10 +1754,12 @@
       ch.on('broadcast', { event:'turn' }, function(m){ if (NP && !NP.isHost && m.payload && m.payload.to === NP.myId) guestOnTurn(m.payload); });
       ch.on('broadcast', { event:'claim' }, function(m){ if (NP && !NP.isHost && m.payload && m.payload.to === NP.myId) guestOnClaim(m.payload); });
       ch.on('broadcast', { event:'action' }, function(m){ if (NP && NP.isHost) onActionMsg(m.payload); });
+      ch.on('broadcast', { event:'bye' }, function(m){ if (NP && NP.isHost) onByeMsg(m.payload); });
       ch.on('broadcast', { event:'claim-answer' }, function(m){ if (NP && NP.isHost) onClaimAnswerMsg(m.payload); });
       ch.on('broadcast', { event:'lobby-open' }, function(){
         if (NP && !NP.isHost){
           NP.guestInLobby = true;
+          NP.lobbySeq = NP.lastSeq || 0;
           document.getElementById('settleScreen').classList.remove('show');
           showLobbyScreen();
         }
@@ -1798,7 +1809,7 @@
           if (on === (s.online !== false)) continue;
           s.online = on; changed = true;
           if (S && S.players[i] && S.players[i].clientId === s.clientId) S.players[i].online = on;
-          if (!on){ logMsg(s.name + ' 掉线了'); toast(s.name + ' 掉线了'); settlePendingBot(i); }
+          if (!on){ logMsg(s.name + ' 掉线了'); toast(s.name + ' 掉线了'); shortenPending(i); }
           else logMsg(s.name + ' 回来了');
         }
         if (changed){
@@ -1902,9 +1913,8 @@
       NP.started = false;
       if (S){ S.gen++; S.prompt = null; S.discardWait = null; }
       Object.keys(NP.pending).forEach(function(k){
-        var pd = NP.pending[k];
-        if (pd.timer) clearTimeout(pd.timer);
-        pd.resolve(pd.type === 'claim' ? 'pass' : { type:'discard', tile: S && S.players[k] ? aiChooseDiscard(S.players[k]) : 0 });
+        var pd = clearPending(k);
+        if (pd) pd.resolve(pd.type === 'claim' ? 'pass' : { type:'discard', tile: S && S.players[k] ? aiChooseDiscard(S.players[k]) : 0 });
       });
       NP.pending = {};
       sendB('lobby-open', {});
@@ -1932,40 +1942,104 @@
       if (ks.length && S.wall.length) return { type:'kong', kong:ks[0] };
       return { type:'discard', tile:aiChooseDiscard(p) };
     }
-    function settlePendingBot(seat){
-      if (!NP) return;
-      var pd = NP.pending[seat]; if (!pd) return;
+    /* drop a pending remote wait and stop its timers; returns the record */
+    function clearPending(seat){
+      var pd = NP && NP.pending[seat];
+      if (!pd) return null;
       delete NP.pending[seat];
       if (pd.timer) clearTimeout(pd.timer);
+      if (pd.resend) clearInterval(pd.resend);
+      return pd;
+    }
+    function settlePendingBot(seat){
+      if (!NP) return;
+      var pd = clearPending(seat); if (!pd) return;
       pd.resolve(pd.type === 'claim' ? 'pass' : botDecision(seat));
+    }
+    /* presence says the seat went offline mid-wait: don't hand the turn to a
+       bot instantly (presence can flap) — just shrink the wait so a guest
+       who comes back within a few seconds still gets to play their turn */
+    function shortenPending(seat){
+      var pd = NP && NP.pending[seat]; if (!pd) return;
+      if (pd.timer) clearTimeout(pd.timer);
+      pd.timer = setTimeout(function(){
+        if (NP && NP.pending[seat] === pd){
+          var name = S && S.players[seat] ? S.players[seat].name : '';
+          clearPending(seat);
+          if (pd.type !== 'claim' && name) logMsg(name + ' 掉线太久，机器人代打这一手');
+          pd.resolve(pd.type === 'claim' ? 'pass' : botDecision(seat));
+        }
+      }, 15000);
     }
     function remoteDiscardWait(seat, gen){
       return new Promise(function(resolve){
         var p = S.players[seat];
-        if (!p.online || !p.clientId){ resolve(botDecision(seat)); return; }
-        var pd = { type:'discard', resolve:resolve, gen:gen, timer:null };
+        if (!p.clientId){ resolve(botDecision(seat)); return; }
+        var payload = { to:p.clientId, wid:++NP.waitSeq, canTsumo:canWinHand(p.hand, p.melds.length), kongs: S.wall.length ? findKongs(p) : [] };
+        var pd = { type:'discard', resolve:resolve, gen:gen, timer:null, resend:null, wid:payload.wid };
+        // always offer the turn, even when presence thinks the seat is
+        // offline (presence can lag/flap — an offline flag must not mute a
+        // player who is actually there); the timer is the only bot fallback
         pd.timer = setTimeout(function(){
           if (NP.pending[seat] === pd){
-            delete NP.pending[seat];
+            clearPending(seat);
             logMsg(p.name + ' 太久没出，机器人代打这一手');
             resolve(botDecision(seat));
           }
-        }, 120000);
+        }, p.online ? 120000 : 20000);
+        // re-send the turn message (and the hand) until it is answered:
+        // a single lost broadcast must not cost the guest their whole turn
+        pd.resend = setInterval(function(){
+          if (!NP || NP.pending[seat] !== pd){ clearInterval(pd.resend); return; }
+          sendB('turn', payload);
+          var pl = S && S.players[seat];
+          if (pl && pl.clientId) sendB('hand', { to:pl.clientId, hand:pl.hand.slice(), lastDrawn:pl.lastDrawn });
+        }, 4000);
         NP.pending[seat] = pd;
-        sendB('turn', { to:p.clientId, canTsumo:canWinHand(p.hand, p.melds.length), kongs: S.wall.length ? findKongs(p) : [] });
+        sendB('turn', payload);
       });
     }
     function remoteClaimWait(seat, buttons, hint, gen){
       return new Promise(function(resolve){
         var p = S.players[seat];
-        if (!p.online || !p.clientId){ resolve('pass'); return; }
-        var pd = { type:'claim', resolve:resolve, gen:gen, timer:null };
+        if (!p.clientId){ resolve('pass'); return; }
+        var payload = { to:p.clientId, wid:++NP.waitSeq, buttons:buttons, hint:hint };
+        var pd = { type:'claim', resolve:resolve, gen:gen, timer:null, resend:null, wid:payload.wid };
         pd.timer = setTimeout(function(){
-          if (NP.pending[seat] === pd){ delete NP.pending[seat]; resolve('pass'); }
-        }, 30000);
+          if (NP.pending[seat] === pd){ clearPending(seat); resolve('pass'); }
+        }, p.online ? 30000 : 12000);
+        pd.resend = setInterval(function(){
+          if (!NP || NP.pending[seat] !== pd){ clearInterval(pd.resend); return; }
+          sendB('claim', payload);
+        }, 4000);
         NP.pending[seat] = pd;
-        sendB('claim', { to:p.clientId, buttons:buttons, hint:hint });
+        sendB('claim', payload);
       });
+    }
+    /* a guest left on purpose: free their lobby seat, or hand an in-game
+       seat straight to a bot so their turn never stalls the table */
+    function onByeMsg(p){
+      if (!p || !p.from || !NP) return;
+      if (NP.started && S){
+        var seat = seatOfClient(p.from); if (seat < 0) return;
+        var pl = S.players[seat];
+        if (!pl || pl.ctrl !== 'remote') return;
+        pl.ctrl = 'bot'; pl.isBot = true; pl.online = true;
+        if (S.spec[seat]) S.spec[seat].ctrl = 'bot';
+        if (NP.seats[seat]) NP.seats[seat] = null;
+        logMsg(pl.name + ' 离开了，机器人接手');
+        settlePendingBot(seat);
+        broadcastLobby();
+        render();
+        return;
+      }
+      for (var i=1;i<4;i++){
+        if (NP.seats[i] && NP.seats[i].clientId === p.from){
+          NP.seats[i] = null;
+          broadcastLobby();
+          return;
+        }
+      }
     }
     function seatOfClient(clientId){
       if (!S) return -1;
@@ -1984,16 +2058,14 @@
       }
       else if (act.type === 'discard' && pl.hand.indexOf(act.tile) >= 0) out = { type:'discard', tile:act.tile };
       if (!out) return;
-      delete NP.pending[seat];
-      if (pd.timer) clearTimeout(pd.timer);
+      clearPending(seat);
       pd.resolve(out);
     }
     function onClaimAnswerMsg(p){
       if (!p || !p.from || !S) return;
       var seat = seatOfClient(p.from); if (seat < 0) return;
       var pd = NP.pending[seat]; if (!pd || pd.type !== 'claim') return;
-      delete NP.pending[seat];
-      if (pd.timer) clearTimeout(pd.timer);
+      clearPending(seat);
       pd.resolve(typeof p.id === 'string' ? p.id : 'pass');
     }
 
@@ -2003,9 +2075,10 @@
       NP.syncTimer = setTimeout(function(){ NP.syncTimer = null; doSync(); }, 60);
     }
     function buildState(){
-      var pc = -1, pt = -1;
+      var pc = -1, pt = -1, pw = 0;
       Object.keys(NP.pending).forEach(function(k){
         if (NP.pending[k].type === 'claim') pc = +k; else pt = +k;
+        pw = NP.pending[k].wid || 0;
       });
       return {
         phase:'game', seq:++NP.seq,
@@ -2014,7 +2087,7 @@
         lastDiscard:S.lastDiscard, lastResult:S.lastResult,
         endSeq:NP.endSeq, endInfo:NP.endInfo,
         fxSeq:NP.fxSeq, fxText:NP.fxText, logs:logLines.slice(),
-        pendingClaim:pc, pendingTurn:pt,
+        pendingClaim:pc, pendingTurn:pt, pendingWid:pw,
         players:S.players.map(function(p){
           return { name:p.name, ctrl:p.ctrl, online:p.online, av:p.av, handCount:p.hand.length,
             melds:p.melds, flowers:p.flowers, flowerKong:p.flowerKong, discards:p.discards };
@@ -2041,25 +2114,42 @@
     }
     function guestOnTurn(p){
       if (!S) return;
+      // the host re-sent a wait I already answered — my answer was lost
+      // in transit; send it again instead of asking me to play it twice
+      if (NP.answered && NP.answered.kind === 'discard' && NP.answered.wid === p.wid && p.wid !== undefined){
+        sendB('action', { from:NP.myId, act:NP.answered.act });
+        return;
+      }
       S.selected = null;
       S.discardWait = {
         canTsumo: !!p.canTsumo, kongs: p.kongs || [],
-        resolve: function(act){ sendB('action', { from:NP.myId, act:act }); }
+        // remember the answer: if a later state still shows the host
+        // waiting on me, the answer was lost in transit and is re-sent
+        resolve: function(act){ NP.answered = { kind:'discard', act:act, wid:p.wid }; sendB('action', { from:NP.myId, act:act }); }
       };
       render();
     }
     function guestOnClaim(p){
       if (!S) return;
+      if (NP.answered && NP.answered.kind === 'claim' && NP.answered.wid === p.wid && p.wid !== undefined){
+        sendB('claim-answer', { from:NP.myId, id:NP.answered.id });
+        return;
+      }
       S.prompt = {
         buttons: p.buttons || [], hint: p.hint || '',
-        resolve: function(id){ sendB('claim-answer', { from:NP.myId, id:id }); }
+        resolve: function(id){ NP.answered = { kind:'claim', id:id, wid:p.wid }; sendB('claim-answer', { from:NP.myId, id:id }); }
       };
       render();
     }
     function applyState(snap){
       if (!snap || !NP) return;
+      NP.lastSeq = Math.max(NP.lastSeq || 0, snap.seq || 0);
       if (NP.guestInLobby){
-        var newRound = !snap.over && (snap.round !== NP.lastRoundSeen || snap.history.length < (NP.lastHistLen || 0));
+        // leave the lobby for any fresh (higher-seq) live round — the seq
+        // check also catches a host restart back to round 1, where the
+        // round number and history length can look identical to the old match
+        var newRound = !snap.over && ((snap.seq || 0) > (NP.lobbySeq || 0) ||
+          snap.round !== NP.lastRoundSeen || snap.history.length < (NP.lastHistLen || 0));
         if (!newRound) return; // stay in the lobby until the host starts a fresh round
       }
       NP.guestInLobby = false;
@@ -2090,6 +2180,26 @@
       // drop stale local waits the host has already moved past
       if (S.prompt && snap.pendingClaim !== ME) S.prompt = null;
       if (S.discardWait && snap.pendingTurn !== ME) S.discardWait = null;
+      // if the host is still waiting on me, an answer I already gave was
+      // lost in transit — send it again (the host ignores duplicates)
+      if (NP.answered){
+        // only re-send while the host is still on the SAME wait (wid) —
+        // a later wait for me (e.g. 碰 right after I passed on 胡） must
+        // never be answered by the stale one
+        var mine = !snap.over && snap.pendingWid === NP.answered.wid &&
+          (NP.answered.kind === 'discard' ? snap.pendingTurn === ME : snap.pendingClaim === ME);
+        if (mine){
+          if (NP.answered.kind === 'discard') sendB('action', { from:NP.myId, act:NP.answered.act });
+          else sendB('claim-answer', { from:NP.myId, id:NP.answered.id });
+        } else NP.answered = null;
+      }
+      // if the 'turn' broadcast itself never arrived, rebuild my discard
+      // wait from the state alone (my hand is already synced) so a single
+      // lost message cannot leave me unable to play
+      if (!snap.over && snap.pendingTurn === ME && !S.discardWait && !S.prompt && !NP.answered){
+        var meP = S.players[ME];
+        if (meP) guestOnTurn({ wid:snap.pendingWid, canTsumo: canWinHand(meP.hand, meP.melds.length), kongs: S.wall.length ? findKongs(meP) : [] });
+      }
       logLines = snap.logs.slice();
       var logEl = document.getElementById('log');
       if (logEl) logEl.innerHTML = logLines.map(function(x){ return '<div>' + x + '</div>'; }).join('');
@@ -2139,6 +2249,9 @@
       $('menuScreen').classList.add('show');
     }
     function leaveRoom(){
+      // tell the host I'm leaving on purpose, so my seat is freed (lobby)
+      // or handed to a bot at once (mid-game) instead of stalling the table
+      if (NP && !NP.isHost && NP.channel) sendB('bye', { from:NP.myId });
       if (NP && NP.channel && NP.client){
         try { NP.channel.untrack(); } catch(e){}
         try { NP.client.removeChannel(NP.channel); } catch(e){}
