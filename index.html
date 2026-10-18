@@ -23,6 +23,8 @@
         --tile-w: clamp(40px, 6.4vw, 76px);
         --tile-sm: clamp(20px, 3.2vw, 36px);
         --tile-md: clamp(26px, 4vw, 46px);
+        --tile-xs: clamp(16px, 2.4vw, 23px);
+        --tile-d: clamp(14px, 2vw, 22px);
       }
       *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
       html,body{ margin:0; padding:0; }
@@ -108,30 +110,42 @@
       .seat-side .pchip{ align-self:flex-start; }
       .seat-side.right{ align-items:flex-end; }
       .seat-side.right .pchip{ align-self:flex-end; }
-      .center-info{
-        flex:1.3 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-        gap:8px; text-align:center; padding:6px;
+      /* center area: the four discard pools around a small compass diamond
+         (the diamond shows only the wall count and the four winds) */
+      .center-area{ flex:1.3 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; }
+      .center-mid{ display:flex; align-items:center; gap:8px; }
+      .pool{ display:grid; gap:2px; min-height:calc(var(--tile-d)*1.36); align-content:start; }
+      .pool-top,.pool-bottom{ grid-template-columns:repeat(12, var(--tile-d)); justify-content:center; }
+      .pool-side{ grid-template-columns:repeat(4, var(--tile-d)); }
+      .center-area .pool .tile{ width:var(--tile-d); height:calc(var(--tile-d)*1.36); font-size:calc(var(--tile-d)*.52); }
+      /* compact info bar pinned to the table's top-left corner:
+         round/dealer line, turn hint, mini log */
+      .info-bar{
+        position:absolute; top:10px; left:10px; z-index:4; pointer-events:none;
+        display:flex; flex-direction:column; gap:4px; max-width:245px;
+        background:rgba(4,22,13,.55); border:1px solid rgba(217,169,43,.35);
+        border-radius:12px; padding:7px 9px;
       }
-      /* center diamond plaque */
-      .diamond{ position:relative; width:208px; height:208px; flex:none; display:flex; align-items:center; justify-content:center; }
+      .info-lines{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+      .diamond{ position:relative; width:92px; height:92px; flex:none; display:flex; align-items:center; justify-content:center; }
       .diamond::before{
-        content:''; position:absolute; inset:16px; transform:rotate(45deg);
+        content:''; position:absolute; inset:7px; transform:rotate(45deg);
         background:linear-gradient(160deg,#17352a,#0b2016);
-        border:2px solid var(--gold); border-radius:18px;
-        box-shadow:0 6px 18px rgba(0,0,0,.5), inset 0 0 24px rgba(0,0,0,.6);
+        border:2px solid var(--gold); border-radius:10px;
+        box-shadow:0 3px 8px rgba(0,0,0,.5), inset 0 0 10px rgba(0,0,0,.6);
       }
       .diamond-inner{ position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:3px; }
-      .compass{ display:grid; grid-template-columns:repeat(3, 44px); grid-template-rows:repeat(3, 44px); }
-      .cw{ display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; color:#5f7a66; }
-      .cw.on{ color:#12241a; background:radial-gradient(circle at 40% 35%, #ffe98a, var(--gold) 75%); border-radius:10px; box-shadow:0 0 12px rgba(217,169,43,.8); }
+      .compass{ display:grid; grid-template-columns:repeat(3, 20px); grid-template-rows:repeat(3, 20px); }
+      .cw{ display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; color:#5f7a66; }
+      .cw.on{ color:#12241a; background:radial-gradient(circle at 40% 35%, #ffe98a, var(--gold) 75%); border-radius:4px; box-shadow:0 0 7px rgba(217,169,43,.8); }
       .cw-top{ grid-area:1/2; } .cw-left{ grid-area:2/1; } .cw-right{ grid-area:2/3; } .cw-bottom{ grid-area:3/2; }
-      .cw-center{ grid-area:2/2; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#cfe6d4; font-size:11px; line-height:1.1; }
-      .cw-center b{ font-size:26px; color:#fff; line-height:1; }
-      .round-line{ font-size:13px; color:#cfe6d4; }
-      .round-line b{ color:var(--gold-soft); font-size:14px; }
-      .turn-hint{ font-size:16px; color:var(--gold-soft); min-height:22px; font-weight:600; }
+      .cw-center{ grid-area:2/2; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#cfe6d4; font-size:9px; line-height:1.1; }
+      .cw-center b{ font-size:17px; color:#fff; line-height:1; }
+      .round-line{ font-size:11.5px; color:#cfe6d4; white-space:nowrap; }
+      .round-line b{ color:var(--gold-soft); font-size:12.5px; }
+      .turn-hint{ font-size:13px; color:var(--gold-soft); min-height:0; font-weight:600; white-space:nowrap; }
       .log{
-        font-size:12px; color:#b9d2be; line-height:1.55; max-height:74px; overflow:hidden;
+        font-size:10.5px; color:#b9d2be; line-height:1.45; max-height:52px; overflow:hidden;
         display:flex; flex-direction:column-reverse;
       }
 
@@ -178,27 +192,24 @@
         box-shadow:0 2px 4px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.35);
       }
       .tile.sm{ width:var(--tile-sm); height:calc(var(--tile-sm)*1.36); font-size:calc(var(--tile-sm)*.52); border-bottom-width:2px; border-radius:4px; }
+      .tile.xs{ width:var(--tile-xs); height:calc(var(--tile-xs)*1.36); font-size:calc(var(--tile-xs)*.52); border-bottom-width:2px; border-radius:4px; }
       .tile.last-discard{ outline:2px solid var(--gold-soft); outline-offset:1px; box-shadow:0 0 10px rgba(240,205,106,.8); }
 
       .backs{ display:flex; gap:2px; flex-wrap:nowrap; overflow:hidden; min-width:0; }
+      /* left/right players: tile backs lie sideways (rotated 90°), like a real table */
+      .backs.side{ flex-wrap:wrap; overflow:visible; }
+      .backs.side .tile.back{ width:calc(var(--tile-sm)*1.36); height:var(--tile-sm); }
       .seat-mid{ display:flex; gap:8px; align-items:flex-start; min-width:0; max-width:100%; overflow:hidden; }
       .melds{ display:flex; gap:8px; flex-wrap:wrap; }
       .meld{ display:inline-flex; gap:1px; padding:2px; background:rgba(0,0,0,.18); border-radius:6px; }
       .flowers-row{ display:flex; gap:2px; align-items:center; min-height:calc(var(--tile-sm)*1.36); }
       .flowers-row .fl-label{ font-size:11px; color:#ffd7e4; margin-right:2px; }
-      .discards{
-        display:grid; grid-template-columns:repeat(6, var(--tile-sm)); gap:2px;
-        min-height:calc(var(--tile-sm)*1.36);
-      }
-      .seat-side .discards{ grid-template-columns:repeat(4, var(--tile-sm)); }
-      .seat-top .discards{ justify-content:center; }
+      /* discard pools live in the center area (.pool above) */
 
       /* ---------- human area ---------- */
       .human-area{ border-top:1px solid rgba(217,169,43,.3); padding-top:10px; display:flex; flex-direction:column; gap:8px; }
       .human-top{ display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
       .human-top .flowers-row{ min-height:0; }
-      .dz-bottom{ display:flex; justify-content:center; }
-      .dz-bottom .discards{ grid-template-columns:repeat(8, var(--tile-sm)); justify-content:center; }
       .hand-row{ display:flex; justify-content:center; align-items:flex-end; gap:3px; flex-wrap:wrap; min-height:calc(var(--tile-w)*1.36 + 8px); }
       button.tile{
         width:var(--tile-w); height:calc(var(--tile-w)*1.36); font-size:calc(var(--tile-w)*.52);
@@ -209,6 +220,8 @@
       button.tile.playable{ cursor:pointer; }
       button.tile.drawn{ transform:translateY(-6px); box-shadow:0 0 0 2px var(--gold-soft), 0 6px 12px rgba(0,0,0,.4); margin-left:8px; }
       button.tile:disabled{ cursor:default; opacity:.94; }
+      button.tile.selected{ transform:translateY(-10px); box-shadow:0 0 0 2px var(--gold), 0 10px 16px rgba(0,0,0,.45); }
+      button.tile.drawn.selected{ transform:translateY(-13px); }
 
       .action-bar{
         display:none; justify-content:center; align-items:center; gap:8px; flex-wrap:wrap;
@@ -254,13 +267,69 @@
 
       /* ---------- modal ---------- */
       .overlay{
-        position:fixed; inset:0; background:rgba(4,10,6,.72); display:none;
-        align-items:center; justify-content:center; z-index:50; padding:16px;
+        position:fixed; inset:0; background:rgba(4,10,6,.6); display:none;
+        align-items:center; justify-content:center; z-index:50; padding:12px;
       }
       .overlay.show{ display:flex; }
       .modal{
         background:#fdfcf7; color:#26221a; border-radius:16px; max-width:520px; width:100%;
-        max-height:88dvh; overflow:auto; padding:22px 22px 18px; box-shadow:0 24px 60px rgba(0,0,0,.55);
+        max-height:100%; overflow:auto; padding:22px 22px 18px; box-shadow:0 24px 60px rgba(0,0,0,.55);
+      }
+      /* ---------- round-end settlement screen (reference-app style list) ---------- */
+      .settle{
+        position:fixed; inset:0; z-index:55; display:none; flex-direction:column;
+        background:linear-gradient(180deg,#106450 0%, #0a4636 55%, #063527 100%);
+        color:#eaf4ee;
+      }
+      .settle.show{ display:flex; }
+      .settle-head{ text-align:center; padding:16px 10px 8px; flex:none; }
+      .settle-title{ font-size:27px; font-weight:900; color:var(--gold-soft); text-shadow:0 2px 8px rgba(0,0,0,.45); }
+      .settle-sub{ font-size:13px; color:#bfe0cd; margin-top:3px; }
+      .settle-rows{ flex:1; overflow-y:auto; display:flex; flex-direction:column; }
+      .srow{
+        display:flex; align-items:center; gap:12px; padding:10px 18px;
+        border-bottom:1px solid rgba(255,255,255,.09); background:rgba(255,255,255,.03);
+      }
+      .srow.win{ background:rgba(217,169,43,.14); }
+      .srow-left{ display:flex; flex-direction:column; align-items:center; gap:3px; width:62px; flex:none; }
+      .srow-left .avatar{ width:46px; height:46px; font-size:21px; }
+      .avatar .win-badge{ left:-9px; right:auto; background:linear-gradient(150deg,#f5c83d,#c8860a); color:#4a2c00; border-color:#ffe98a; }
+      .srow-name{ font-size:13px; font-weight:700; color:#fff; white-space:nowrap; }
+      .srow-wind{ font-size:11px; color:#9fc6ae; }
+      .srow-main{ flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+      .srow-line{ font-size:13px; color:#eaf4ee; display:flex; align-items:baseline; gap:6px; }
+      .srow-line.dim{ font-size:12px; color:#a9cbb6; }
+      .mini-tag{ flex:none; font-size:10.5px; font-weight:800; border-radius:4px; padding:1px 5px; color:#fff; }
+      .mini-tag.g{ background:#2e9e4f; } .mini-tag.r{ background:#d84f35; }
+      .srow-tiles{ display:flex; flex-wrap:wrap; gap:5px; align-items:center; }
+      .srow-side{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex:none; }
+      .srow-total{ font-size:28px; font-weight:900; font-variant-numeric:tabular-nums; line-height:1; }
+      .srow-total.plus{ color:#f5a623; } .srow-total.minus{ color:#8fc3f0; }
+      .fei-tag{ background:#dcefe4; color:#14532d; border-radius:5px; padding:2px 8px; font-size:12px; font-weight:700; white-space:nowrap; }
+      .settle-foot{
+        flex:none; display:flex; justify-content:center; gap:14px; padding:12px;
+        background:rgba(0,0,0,.38);
+      }
+      .sbtn{ border:none; border-radius:9px; padding:11px 32px; font-size:16px; font-weight:800; color:#fff; box-shadow:0 3px 0 rgba(0,0,0,.35); }
+      .sbtn:active{ transform:translateY(2px); box-shadow:none; }
+      .sbtn.blue{ background:#2f7fd0; } .sbtn.green{ background:#1d9e57; } .sbtn.orange{ background:#e8930c; }
+
+      /* ---------- big gold call-out for 吃 / 碰 / 杠 / 胡 ---------- */
+      .fx-text{
+        position:absolute; left:50%; top:42%; z-index:6; pointer-events:none;
+        transform:translate(-50%,-50%); white-space:nowrap; opacity:0;
+        font-family:KaiTi,STKaiti,'Kaiti SC',serif; font-weight:900; letter-spacing:4px;
+        font-size:clamp(58px, 13vh, 118px); color:#ffc93d;
+        -webkit-text-stroke:2px #8a5a00;
+        text-shadow:0 0 18px rgba(255,180,0,.55), 0 4px 0 #7a4a00, 0 8px 22px rgba(0,0,0,.6);
+      }
+      .fx-text.play{ animation:fxPop 1.05s ease-out forwards; }
+      @keyframes fxPop{
+        0%{ opacity:0; transform:translate(-50%,-50%) scale(.3) rotate(-7deg); }
+        16%{ opacity:1; transform:translate(-50%,-50%) scale(1.18) rotate(2deg); }
+        30%{ transform:translate(-50%,-50%) scale(1) rotate(0deg); }
+        74%{ opacity:1; }
+        100%{ opacity:0; transform:translate(-50%,-57%) scale(1.04); }
       }
       .modal h2{ margin:0 0 4px; font-size:24px; }
       .modal .sub{ color:#6b6455; font-size:14px; margin-bottom:12px; }
@@ -306,40 +375,49 @@
 
       /* ---------- short landscape screens (phones held sideways) ---------- */
       @media (orientation:landscape) and (max-height:540px){
-        :root{ --tile-w: clamp(34px, 13vh, 58px); --tile-sm: clamp(15px, 5.8vh, 25px); --tile-md: clamp(19px, 7.2vh, 31px); }
+        :root{ --tile-w: clamp(34px, 13vh, 58px); --tile-sm: clamp(15px, 5.8vh, 25px); --tile-md: clamp(19px, 7.2vh, 31px); --tile-d: clamp(13px, 4.2vh, 19px); }
         .toolbar{ padding:max(6px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 6px max(12px, env(safe-area-inset-left)); }
         .table-wrap{ padding:0 max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left)); }
         .table{ min-height:calc(100dvh - 92px); padding:8px; border-width:8px; border-radius:18px; gap:6px; }
-        .diamond{ width:118px; height:118px; }
-        .diamond::before{ inset:9px; border-radius:12px; }
-        .compass{ grid-template-columns:repeat(3, 25px); grid-template-rows:repeat(3, 25px); }
-        .cw{ font-size:13px; } .cw-center b{ font-size:16px; }
+        .info-bar{ top:6px; left:6px; padding:5px 7px; }
+        .diamond{ width:68px; height:68px; }
+        .diamond::before{ inset:5px; border-radius:8px; }
+        .compass{ grid-template-columns:repeat(3, 16px); grid-template-rows:repeat(3, 16px); }
+        .cw{ font-size:11px; } .cw-center b{ font-size:13px; }
+        .pool-top,.pool-bottom{ grid-template-columns:repeat(10, var(--tile-d)); }
         .round-line{ font-size:11px; }
         .log{ display:none; }
         .avatar{ width:32px; height:32px; font-size:15px; }
         .pchip{ padding:4px 9px 4px 4px; }
         .human-area{ padding-top:6px; gap:5px; }
         .action-bar{ min-height:34px; }
+        .fx-text{ font-size:72px; }
+        .srow{ padding:7px 12px; gap:9px; }
+        .srow-left{ width:52px; } .srow-left .avatar{ width:38px; height:38px; font-size:17px; }
+        .srow-total{ font-size:23px; }
+        .settle-title{ font-size:22px; }
+        .settle-head{ padding:9px 8px 5px; }
+        .sbtn{ padding:9px 24px; font-size:14px; }
       }
 
       @media (prefers-reduced-motion: reduce){
-        .flip-in,.flip-drawn,.deal-in,.sh-tile{ animation:none !important; }
+        .flip-in,.flip-drawn,.deal-in,.sh-tile,.fx-text.play{ animation:none !important; }
       }
 
       @media (max-width:560px){
-        :root{ --tile-w: clamp(22px, 6.3vw, 44px); }
+        :root{ --tile-w: clamp(22px, 6.3vw, 44px); --tile-d: clamp(13px, 4.5vw, 18px); }
         .table{ border-width:7px; padding:8px; min-height:480px; border-radius:18px; }
-        .diamond{ width:128px; height:128px; }
-        .diamond::before{ inset:10px; border-radius:12px; }
-        .compass{ grid-template-columns:repeat(3, 27px); grid-template-rows:repeat(3, 27px); }
-        .cw{ font-size:14px; } .cw-center b{ font-size:16px; }
+        .info-bar{ top:6px; left:6px; padding:5px 7px; max-width:210px; }
+        .diamond{ width:68px; height:68px; }
+        .diamond::before{ inset:5px; border-radius:8px; }
+        .compass{ grid-template-columns:repeat(3, 16px); grid-template-rows:repeat(3, 16px); }
+        .cw{ font-size:11px; } .cw-center b{ font-size:13px; }
         .round-line{ font-size:11px; }
         .avatar{ width:34px; height:34px; font-size:16px; }
         .pchip{ padding:4px 9px 4px 4px; border-radius:10px; }
         .chip-name{ font-size:12px; } .chip-score{ font-size:12px; }
-        .discards{ grid-template-columns:repeat(5, var(--tile-sm)); }
-        .seat-side .discards{ grid-template-columns:repeat(3, var(--tile-sm)); }
-        .dz-bottom .discards{ grid-template-columns:repeat(6, var(--tile-sm)); }
+        .pool-top,.pool-bottom{ grid-template-columns:repeat(10, var(--tile-d)); }
+        .pool-side{ grid-template-columns:repeat(4, var(--tile-d)); }
         .seat-side .backs{ flex-wrap:wrap; }
         .hand-row{ gap:1px; }
         button.tile.drawn{ margin-left:5px; }
@@ -352,51 +430,66 @@
       }
 
       /* ---------- portrait phones: rotate the whole game 90° into a landscape table ----------
-         The game root is turned sideways (width/height swapped, anchored at the
-         top-right corner so it fills the screen). No re-layout: inside the
-         rotated frame the normal landscape layout runs, with the same compact
-         sizing used for short landscape screens (tile sizes keyed to vw here,
-         since the rotated frame's height is the viewport's width). */
+         JS measures the real visible viewport (innerWidth / visualViewport,
+         which already exclude the Safari toolbar) into --appw / --apph.
+         The game root is exactly that size, turned sideways with
+         translateX + rotate(90deg) around the top-left origin, so the
+         rotated table fills the visible screen precisely — no black bars.
+         Everything (popups included) lives inside the rotated root and
+         lays out in the landscape coordinate system. Tile sizes key off
+         --apph, the frame's long side, so they scale with the screen. */
       @media (orientation:portrait) and (max-width:640px) and (pointer:coarse){
         html,body{ height:100%; overflow:hidden; }
         #app{
-          position:fixed; top:0; left:100vw;
-          width:100vh; width:100dvh; height:100vw;
-          transform:rotate(90deg); transform-origin:top left;
+          position:fixed; top:0; left:0;
+          width:var(--apph, 100dvh); height:var(--appw, 100vw);
+          min-height:0;
+          transform:translateX(var(--appw, 100vw)) rotate(90deg);
+          transform-origin:top left;
           overflow-y:auto; overflow-x:hidden;
           background:var(--page-bg);
         }
-        :root{ --tile-w: clamp(30px, 5.6vh, 50px); --tile-sm: clamp(13px, 2.3vh, 21px); --tile-md: clamp(17px, 2.9vh, 27px); }
+        :root{
+          --tile-w: clamp(30px, calc(var(--apph, 100dvh) * .056), 52px);
+          --tile-sm: clamp(13px, calc(var(--apph, 100dvh) * .026), 23px);
+          --tile-md: clamp(17px, calc(var(--apph, 100dvh) * .032), 29px);
+          --tile-xs: clamp(15px, calc(var(--apph, 100dvh) * .027), 23px);
+          --tile-d: clamp(13px, calc(var(--apph, 100dvh) * .02), 19px);
+        }
         .toolbar{ padding:4px 12px; }
-        .table{ min-height:0; height:calc(100vw - 44px); padding:6px; border-width:8px; border-radius:18px; gap:4px; }
+        .table{ min-height:0; height:calc(var(--appw, 100vw) - 46px); padding:6px; border-width:8px; border-radius:18px; gap:4px; }
         .table > .seat-top, .table > .human-area{ flex:none; }
         .table > .mid-row{ flex:1 1 0; min-height:0; }
-        .seat-top .discards{ min-height:0; }
-        .seat-side .discards{ min-height:0; }
-        .dz-bottom .discards{ min-height:0; }
+        .seat-top{ flex-direction:row; flex-wrap:wrap; justify-content:center; align-items:center; }
+        .pool{ min-height:0; }
         .flowers-row{ min-height:0; }
-        .diamond{ width:100px; height:100px; }
-        .diamond::before{ inset:8px; border-radius:11px; }
-        .compass{ grid-template-columns:repeat(3, 22px); grid-template-rows:repeat(3, 22px); }
-        .cw{ font-size:12px; } .cw-center b{ font-size:14px; }
-        .round-line{ font-size:11px; }
-        .turn-hint{ font-size:13px; min-height:18px; }
-        .human-area{ gap:4px; padding-top:5px; }
-        .hand-row{ min-height:0; }
-        .cw{ font-size:13px; } .cw-center b{ font-size:16px; }
-        .round-line{ font-size:11px; }
+        .info-bar{ top:5px; left:5px; padding:5px 7px; }
+        .diamond{ width:64px; height:64px; }
+        .diamond::before{ inset:5px; border-radius:8px; }
+        .compass{ grid-template-columns:repeat(3, 15px); grid-template-rows:repeat(3, 15px); }
+        .cw{ font-size:10.5px; } .cw-center{ font-size:7px; } .cw-center b{ font-size:13px; }
+        .round-line{ font-size:10.5px; }
+        .turn-hint{ font-size:12px; }
         .log{ display:none; }
         .avatar{ width:32px; height:32px; font-size:15px; }
         .pchip{ padding:4px 9px 4px 4px; }
         .chip-name{ font-size:13px; } .chip-score{ font-size:13px; }
-        .human-area{ padding-top:6px; gap:5px; }
+        .human-area{ padding-top:5px; gap:4px; }
         .action-bar{ min-height:34px; }
-        .discards{ grid-template-columns:repeat(6, var(--tile-sm)); }
-        .seat-side .discards{ grid-template-columns:repeat(4, var(--tile-sm)); }
-        .dz-bottom .discards{ grid-template-columns:repeat(8, var(--tile-sm)); }
+        .pool-top,.pool-bottom{ grid-template-columns:repeat(10, var(--tile-d)); }
+        .pool-side{ grid-template-columns:repeat(4, var(--tile-d)); }
         .seat-side .backs{ flex-wrap:nowrap; }
-        .hand-row{ gap:3px; }
+        .seat-side .backs.side{ flex-wrap:wrap; }
+        .hand-row{ gap:3px; min-height:0; }
         button.tile.drawn{ margin-left:8px; }
+        .fx-text{ font-size:calc(var(--apph, 100dvh) * .12); }
+        .srow{ padding:6px 10px; gap:8px; }
+        .srow-left{ width:48px; } .srow-left .avatar{ width:36px; height:36px; font-size:16px; }
+        .srow-total{ font-size:22px; }
+        .settle-title{ font-size:21px; }
+        .settle-head{ padding:8px 8px 4px; }
+        .settle-foot{ padding:8px; gap:10px; }
+        .sbtn{ padding:9px 20px; font-size:14px; }
       }
     </style>
   </head>
@@ -404,6 +497,7 @@
     <div id="app">
     <div class="toolbar">
       <div class="spacer"></div>
+      <button class="tbtn" id="toolbarNext" style="display:none">下一局</button>
       <button class="tbtn" id="rulesBtn">玩法规则</button>
       <button class="tbtn" id="resetBtn">重新开始</button>
     </div>
@@ -411,27 +505,39 @@
     <div class="table-wrap">
       <div class="table">
         <div class="shuffle-layer" id="shuffleLayer"></div>
+        <div class="fx-text" id="fxText"></div>
+        <!-- compact info bar, pinned to the table's top-left corner -->
+        <div class="info-bar">
+          <div class="info-lines">
+            <div class="round-line">第 <b id="roundNum">1</b> 局 · 庄家 <span id="dealerInfo"></span></div>
+            <div class="turn-hint" id="turnHint"></div>
+          </div>
+          <div class="log" id="log"></div>
+        </div>
         <!-- 对家 (top) -->
         <div class="seat-top" id="seat2"></div>
         <div class="mid-row">
           <!-- 左家 -->
           <div class="seat-side" id="seat3"></div>
-          <!-- center -->
-          <div class="center-info">
-            <div class="diamond">
-              <div class="diamond-inner">
-                <div class="compass">
-                  <span class="cw cw-top" id="cw2">西</span>
-                  <span class="cw cw-left" id="cw3">北</span>
-                  <span class="cw-center">余<b id="wallCount">0</b></span>
-                  <span class="cw cw-right" id="cw1">南</span>
-                  <span class="cw cw-bottom" id="cw0">东</span>
+          <!-- center: four discard pools around a small compass diamond -->
+          <div class="center-area">
+            <div class="pool pool-top" id="discards2"></div>
+            <div class="center-mid">
+              <div class="pool pool-side" id="discards3"></div>
+              <div class="diamond">
+                <div class="diamond-inner">
+                  <div class="compass">
+                    <span class="cw cw-top" id="cw2">西</span>
+                    <span class="cw cw-left" id="cw3">北</span>
+                    <span class="cw-center">余<b id="wallCount">0</b></span>
+                    <span class="cw cw-right" id="cw1">南</span>
+                    <span class="cw cw-bottom" id="cw0">东</span>
+                  </div>
                 </div>
               </div>
+              <div class="pool pool-side" id="discards1"></div>
             </div>
-            <div class="round-line">第 <b id="roundNum">1</b> 局 · 庄家 <span id="dealerInfo"></span></div>
-            <div class="turn-hint" id="turnHint"></div>
-            <div class="log" id="log"></div>
+            <div class="pool pool-bottom" id="discards0"></div>
           </div>
           <!-- 右家 (下家) -->
           <div class="seat-side right" id="seat1"></div>
@@ -439,7 +545,6 @@
         <!-- human -->
         <div class="human-area">
           <div class="human-top" id="seat0"></div>
-          <div id="discards0" class="dz-bottom"></div>
           <div class="action-bar" id="actionBar"></div>
           <div class="hand-row" id="handRow"></div>
         </div>
@@ -453,15 +558,17 @@
 
     <div class="toast" id="toast"></div>
 
-    <!-- round end -->
-    <div class="overlay" id="endOverlay">
-      <div class="modal">
-        <h2 id="endTitle"></h2>
-        <div class="sub" id="endSub"></div>
-        <div class="win-tiles" id="endTiles"></div>
-        <div class="breakdown" id="endBreakdown"></div>
-        <div id="endScores"></div>
-        <button class="big-btn" id="nextRoundBtn">下一局</button>
+    <!-- round-end settlement: horizontal per-player list, reference-app style -->
+    <div class="settle" id="settleScreen">
+      <div class="settle-head">
+        <div class="settle-title" id="endTitle"></div>
+        <div class="settle-sub" id="endSub"></div>
+      </div>
+      <div class="settle-rows" id="endRows"></div>
+      <div class="settle-foot">
+        <button class="sbtn blue" id="settleBackBtn">返回大厅</button>
+        <button class="sbtn green" id="settleChangeBtn">换桌</button>
+        <button class="sbtn orange" id="nextRoundBtn">继续</button>
       </div>
     </div>
 
@@ -710,7 +817,7 @@
         gen: (S ? S.gen+1 : 1),
         scores:[0,0,0,0], lastDeltas:null, history:[],
         round:1, dealer:0, wall:[], players:[], current:-1,
-        lastDiscard:null, over:false, prompt:null, discardWait:null
+        lastDiscard:null, over:false, prompt:null, discardWait:null, selected:null
       };
       startRound();
     }
@@ -720,7 +827,7 @@
       for (var wI=0;wI<4;wI++) wall.push(WILD);
       for (var f=35;f<=42;f++) wall.push(f);
       for (var i=wall.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=wall[i]; wall[i]=wall[j]; wall[j]=tmp; }
-      S.wall = wall; S.over = false; S.lastDiscard = null; S.lastDeltas = null;
+      S.wall = wall; S.over = false; S.lastDiscard = null; S.lastDeltas = null; S.selected = null;
       S.players = [ newPlayer('你', false), newPlayer(BOT_NAMES[0], true), newPlayer(BOT_NAMES[1], true), newPlayer(BOT_NAMES[2], true) ];
       for (var p=0;p<4;p++) for (var d=0; d<13; d++) S.players[p].hand.push(S.wall.shift());
       // flowers in the dealt hand: set aside, replace from wall tail
@@ -782,6 +889,19 @@
       el.textContent = s; el.classList.add('show');
       clearTimeout(toastTimer); toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 1600);
     }
+    /* big gold call-out in the middle of the table: 吃 / 碰 / 杠 / 花杠 / 胡 / 自摸 */
+    var fxTimer = null;
+    function showFx(text){
+      var el = document.getElementById('fxText');
+      if (!el) return;
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      el.textContent = text;
+      el.classList.remove('play');
+      void el.offsetWidth;
+      el.classList.add('play');
+      clearTimeout(fxTimer);
+      fxTimer = setTimeout(function(){ el.classList.remove('play'); }, 1120);
+    }
     function playerWind(i){ return WINDS[(i - S.dealer + 4) % 4]; }
 
     /* draw one tile; flowers are auto set aside and replaced from the wall tail.
@@ -819,6 +939,7 @@
       S.history.push({ round:S.round, label: S.players[pIdx].name + ' ' + label, deltas:deltas.slice() });
       logMsg(S.players[pIdx].name + ' ' + label + '：其他三家每人给 ' + per + ' 分，共 +' + (3*per) + ' 分');
       toast(S.players[pIdx].name + ' ' + label + '，每家 +' + per + ' 分');
+      if (label.indexOf('杠') >= 0) showFx(label.indexOf('花') >= 0 ? '花杠' : '杠');
       renderScoreboard();
       renderHistory();
     }
@@ -918,6 +1039,7 @@
         removeFromHand(cp, discarded, 2);
         cp.melds.push({kind:'pon', tiles:[discarded,discarded,discarded]});
         logMsg(cp.name + ' 碰「' + tileLabel(discarded) + '」');
+        showFx('碰');
       } else if (claim.kind === 'kong'){
         removeFromHand(cp, discarded, 3);
         cp.melds.push({kind:'kong', tiles:[discarded,discarded,discarded,discarded], concealed:false});
@@ -928,6 +1050,7 @@
         var seq = claim.others.concat([discarded]).sort(function(a,b){return a-b;});
         cp.melds.push({kind:'chi', tiles:seq});
         logMsg(cp.name + ' 吃「' + tileLabel(discarded) + '」');
+        showFx('吃');
       }
       S.animMeld = { player: claim.player, idx: cp.melds.length - 1 };
       sortHand(cp);
@@ -961,6 +1084,7 @@
     /* human action-phase wait: resolves {type:'discard',tile} | {type:'tsumo'} | {type:'kong',kong} */
     function humanAction(pIdx, gen){
       return new Promise(function(resolve){
+        S.selected = null;
         S.discardWait = {
           resolve: resolve,
           canTsumo: canWinHand(S.players[0].hand, S.players[0].melds.length),
@@ -1070,12 +1194,15 @@
       S.lastDeltas = deltas;
       S.history.push({ round:S.round, label: w.name + (type==='tsumo' ? ' 自摸' : ' 胡牌'), deltas:deltas.slice() });
       if (type === 'ron') sortHand(w);
+      S.lastResult = { winner:winnerIdx, type:type, discarder:discarderIdx, winTile:winTile, deltas:deltas.slice() };
       render();
-      showEnd({
+      showFx(type === 'tsumo' ? '自摸' : '胡');
+      var endInfo = {
         title: (winnerIdx===0 ? '🎉 你胡牌了！' : w.name + ' 胡牌'),
-        sub: type === 'tsumo' ? '自摸' : '点炮胡 · ' + S.players[discarderIdx].name + ' 打出「' + tileNameText(winTile) + '」',
-        winner: winnerIdx, lines: lines, deltas: deltas
-      });
+        sub: type === 'tsumo' ? '自摸' : '点炮胡 · ' + S.players[discarderIdx].name + ' 打出「' + tileNameText(winTile) + '」'
+      };
+      var g = S.gen;
+      setTimeout(function(){ if (S.gen === g && S.over) showEnd(endInfo); }, 950);
       S.lastDiscard = null;
     }
     function endDraw(){
@@ -1083,32 +1210,87 @@
       S.over = true;
       S.history.push({ round:S.round, label:'流局', deltas:[0,0,0,0] });
       S.lastDeltas = [0,0,0,0];
+      S.lastResult = { winner:-1, type:'draw', discarder:-1, winTile:null, deltas:[0,0,0,0] };
       render();
-      showEnd({ title:'流局', sub:'牌墙摸完，没有人胡牌，本局不计分。', winner:-1, lines:['流局，本局不计分。'], deltas:[0,0,0,0] });
+      showEnd({ title:'流局', sub:'牌墙摸完，没有人胡牌，本局不计分。' });
     }
+    /* toolbar 「下一局」 shows only when the round is over and the settlement screen is closed */
+    function syncNextBtn(){
+      var b = document.getElementById('toolbarNext');
+      var ov = document.getElementById('settleScreen');
+      if (b) b.style.display = (S && S.over && ov && !ov.classList.contains('show')) ? '' : 'none';
+    }
+    function closeEndModal(){
+      document.getElementById('settleScreen').classList.remove('show');
+      syncNextBtn();
+    }
+    /* settlement screen: one horizontal row per player (winner first) —
+       avatar + name, 得分 / 明细 lines, full hand in small tiles, 飞 count,
+       and the round total in big type on the right */
     function showEnd(info){
       document.getElementById('endTitle').textContent = info.title;
       document.getElementById('endSub').textContent = info.sub;
-      var tilesEl = document.getElementById('endTiles');
-      if (info.winner >= 0){
-        var w = S.players[info.winner], html = '', seq = 0;
-        w.melds.forEach(function(m){
-          html += '<span class="meld flip-in" style="animation-delay:' + (seq++ * 110) + 'ms">' + m.tiles.map(function(t){ return tileHTML(t,'sm'); }).join('') + '</span>';
+      var res = S.lastResult || { winner:-1, type:'draw', discarder:-1, deltas:[0,0,0,0] };
+      var evs = S.history.filter(function(h){ return h.round === S.round; });
+      var totals = [0,0,0,0];
+      evs.forEach(function(h){ for (var i=0;i<4;i++) totals[i] += h.deltas[i]; });
+      var order = [];
+      if (res.winner >= 0) order.push(res.winner);
+      for (var oi=0; oi<4; oi++) if (oi !== res.winner) order.push(oi);
+      var rows = order.map(function(i){
+        var p = S.players[i];
+        var scoreParts = [], detailParts = [];
+        if (res.winner === i){
+          scoreParts.push((res.type==='tsumo' ? '自摸' : '胡牌') + ' +' + res.deltas[i]);
+          detailParts.push(res.type==='tsumo' ? '三家每人赔 4 分' : S.players[res.discarder].name + ' 点炮赔 4 分，另两家各赔 2 分');
+        } else if (res.winner >= 0){
+          scoreParts.push((res.type==='tsumo' ? '自摸' : (i===res.discarder ? '点炮' : '胡牌')) + ' ' + res.deltas[i]);
+          detailParts.push(res.type==='tsumo'
+            ? S.players[res.winner].name + ' 自摸，赔 4 分'
+            : (i===res.discarder ? '点炮，赔 4 分' : S.players[res.discarder].name + ' 点炮，赔 2 分'));
+        }
+        var kongPay = 0;
+        evs.forEach(function(h){
+          var parts = h.label.split(' ');
+          if (parts.length < 2 || parts[1].indexOf('杠') < 0) return;
+          if (parts[0] === p.name){
+            scoreParts.push(parts[1] + ' +' + h.deltas[i]);
+            detailParts.push(parts[1] + '：三家每人赔 ' + (h.deltas[i]/3) + ' 分');
+          } else if (h.deltas[i] < 0){
+            kongPay += h.deltas[i];
+            detailParts.push(parts[0] + parts[1] + '，赔 ' + (-h.deltas[i]) + ' 分');
+          }
         });
-        html += '<span class="meld flip-in" style="animation-delay:' + (seq++ * 110) + 'ms">' + w.hand.slice().sort(function(a,b){return a-b;}).map(function(t){ return tileHTML(t,'sm'); }).join('') + '</span>';
-        if (w.flowers.length) html += '<span class="meld flip-in" style="animation-delay:' + (seq++ * 110) + 'ms">' + w.flowers.map(function(t){ return tileHTML(t,'sm'); }).join('') + '</span>';
-        tilesEl.innerHTML = html;
-      } else tilesEl.innerHTML = '';
-      document.getElementById('endBreakdown').innerHTML = info.lines.map(function(l){ return '<div>' + l + '</div>'; }).join('');
-      var rows = S.players.map(function(p, i){
-        var d = info.deltas[i];
-        return '<tr><td>' + p.name + '（' + playerWind(i) + '）</td>' +
-          '<td class="' + (d>0?'p':d<0?'m':'') + '">' + (d>0?'+':'') + d + '</td>' +
-          '<td><b>' + S.scores[i] + '</b></td></tr>';
+        if (kongPay < 0) scoreParts.push('杠 ' + kongPay);
+        if (res.winner < 0 && !detailParts.length) detailParts.push('流局，本局不计分');
+        if (!detailParts.length) detailParts.push('本局无其他明细');
+        var tilesHtml = '', seq = 0;
+        p.melds.forEach(function(m){
+          tilesHtml += '<span class="meld flip-in" style="animation-delay:' + (seq++ * 90) + 'ms">' + m.tiles.map(function(t){ return tileHTML(t,'xs'); }).join('') + '</span>';
+        });
+        tilesHtml += '<span class="meld flip-in" style="animation-delay:' + (seq++ * 90) + 'ms">' + p.hand.slice().sort(function(a,b){return a-b;}).map(function(t){ return tileHTML(t,'xs'); }).join('') + '</span>';
+        if (p.flowers.length) tilesHtml += '<span class="meld flip-in" style="animation-delay:' + (seq++ * 90) + 'ms">' + p.flowers.map(function(t){ return tileHTML(t,'xs'); }).join('') + '</span>';
+        var fei = 0;
+        p.hand.forEach(function(t){ if (t===WILD) fei++; });
+        p.melds.forEach(function(m){ m.tiles.forEach(function(t){ if (t===WILD) fei++; }); });
+        var tot = totals[i];
+        return '<div class="srow' + (res.winner===i ? ' win' : '') + '">' +
+          '<div class="srow-left"><div class="avatar av' + i + '">' + AV_CHARS[i] +
+            (S.dealer===i ? '<span class="dealer-badge">庄</span>' : '') +
+            (res.winner===i ? '<span class="dealer-badge win-badge">胜</span>' : '') + '</div>' +
+            '<div class="srow-name">' + p.name + '</div><div class="srow-wind">' + playerWind(i) + '风</div></div>' +
+          '<div class="srow-main">' +
+            '<div class="srow-line"><span class="mini-tag g">得分</span><span>' + (scoreParts.length ? scoreParts.join('　') : '—') + '</span></div>' +
+            '<div class="srow-line dim"><span class="mini-tag r">明细</span><span>' + detailParts.join(' · ') + '</span></div>' +
+            '<div class="srow-tiles">' + tilesHtml + '</div>' +
+          '</div>' +
+          '<div class="srow-side"><div class="srow-total ' + (tot>0?'plus':tot<0?'minus':'') + '">' + (tot>0?'+':'') + tot + '</div>' +
+          '<div class="fei-tag">飞 ×' + fei + '</div></div>' +
+        '</div>';
       }).join('');
-      document.getElementById('endScores').innerHTML =
-        '<table><tr><th>玩家</th><th>本局</th><th>累计总分</th></tr>' + rows + '</table>';
-      document.getElementById('endOverlay').classList.add('show');
+      document.getElementById('endRows').innerHTML = rows;
+      document.getElementById('settleScreen').classList.add('show');
+      syncNextBtn();
     }
 
     /* ================= rendering ================= */
@@ -1126,12 +1308,12 @@
         p.flowers.map(function(t){ return tileHTML(t,'sm'); }).join('') + '</div>';
     }
     function discardsHTML(p, pIdx){
-      return '<div class="discards">' + p.discards.map(function(t, i){
+      return p.discards.map(function(t, i){
         var last = S.lastDiscard && S.lastDiscard.player === pIdx && i === p.discards.length-1;
         var flip = last && takeAnim('disc' + pIdx);
         var extra = ((last ? 'last-discard' : '') + (flip ? ' flip-in' : '')).trim();
-        return tileHTML(t, 'sm', extra);
-      }).join('') + '</div>';
+        return tileHTML(t, 'xs', extra);
+      }).join('');
     }
     var AV_CHARS = ['你','强','美','王'];
     function chipHTML(i){
@@ -1154,7 +1336,6 @@
         el.innerHTML =
           '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' + chipHTML(0) + flowersHTML(p) + '</div>' +
           '<div class="melds">' + p.melds.map(function(m, mi){ return meldHTML(m, 0, mi); }).join('') + '</div>';
-        document.getElementById('discards0').innerHTML = discardsHTML(p, 0);
         document.getElementById('handRow').innerHTML = handHTML();
         return;
       }
@@ -1167,10 +1348,10 @@
       el.innerHTML =
         chipHTML(i) +
         '<div class="seat-mid" style="' + (i===1 ? 'flex-direction:row-reverse;' : '') + '">' +
-          '<div class="backs">' + backs + '</div>' +
+          '<div class="backs' + (i===1 || i===3 ? ' side' : '') + '">' + backs + '</div>' +
           '<div class="melds">' + p.melds.map(function(m, mi){ return meldHTML(m, i, mi); }).join('') + '</div>' +
         '</div>' +
-        flowersHTML(p) + discardsHTML(p, i);
+        flowersHTML(p);
     }
     function handHTML(){
       var p = S.players[0];
@@ -1184,12 +1365,12 @@
       var canPlay = !!S.discardWait;
       var deal = !!S.justDealt;
       var html = display.map(function(t, di){
-        return '<button type="button" class="tile' + tileCls(t) + (canPlay ? ' playable' : '') + (deal ? ' deal-in' : '') + '" data-tile="' + t + '"' +
+        return '<button type="button" aria-label="' + tileNameText(t) + '" class="tile' + tileCls(t) + (canPlay ? ' playable' : '') + (canPlay && S.selected === t ? ' selected' : '') + (deal ? ' deal-in' : '') + '" data-tile="' + t + '"' +
           (deal ? ' style="animation-delay:' + (di*45) + 'ms"' : '') + (canPlay ? '' : ' disabled') + '>' + tileInner(t) + '</button>';
       }).join('');
       if (drawnTile !== null){
         var flipDrawn = takeAnim('draw0');
-        html += '<button type="button" class="tile' + tileCls(drawnTile) + ' drawn' + (canPlay ? ' playable' : '') + (flipDrawn ? ' flip-drawn' : '') + (deal ? ' deal-in' : '') + '" data-tile="' + drawnTile + '"' +
+        html += '<button type="button" aria-label="' + tileNameText(drawnTile) + '" class="tile' + tileCls(drawnTile) + ' drawn' + (canPlay ? ' playable' : '') + (canPlay && S.selected === drawnTile ? ' selected' : '') + (flipDrawn ? ' flip-drawn' : '') + (deal ? ' deal-in' : '') + '" data-tile="' + drawnTile + '"' +
           (deal ? ' style="animation-delay:' + (display.length*45) + 'ms"' : '') + (canPlay ? '' : ' disabled') + '>' + tileInner(drawnTile) + '</button>';
       }
       return html;
@@ -1243,7 +1424,10 @@
         S.discardWait.kongs.forEach(function(k, i){
           btns += '<button type="button" class="abtn kong" data-action="__kong' + i + '">杠 ' + tileNameText(k.tile) + '</button>';
         });
-        html = '<div class="hint">轮到你了，点一张牌打出' + (btns ? '，或者：' : '') + '</div>' + btns;
+        var selHint = (S.selected !== null && S.selected !== undefined)
+          ? '已选中「' + tileNameText(S.selected) + '」，再点一次打出 · 点别的牌可换选'
+          : '轮到你了，点一张牌选中，再点一次才打出';
+        html = '<div class="hint">' + selHint + (btns ? '，或者：' : '') + '</div>' + btns;
       }
       bar.innerHTML = html;
       bar.classList.toggle('show', !!html);
@@ -1262,19 +1446,27 @@
       document.getElementById('turnHint').textContent = hint;
       renderScoreboard();
       for (var i=0;i<4;i++) renderSeat(i);
-      // human discards shown above the hand area (inside seat0 block we placed name+flowers; add discards)
+      // all four discard pools live in the center area, around the diamond
+      for (var pi=0; pi<4; pi++){
+        var pool = document.getElementById('discards' + pi);
+        if (pool) pool.innerHTML = discardsHTML(S.players[pi], pi);
+      }
       renderActionBar();
       renderHistory();
+      syncNextBtn();
       S.justDealt = false;
     }
 
     /* ================= events ================= */
+    /* two-tap discard: first tap only selects (tile lifts + gold ring),
+       second tap on the same tile plays it; tapping another tile switches */
     document.getElementById('handRow').addEventListener('click', function(e){
       var btn = e.target.closest('button.tile');
       if (!btn || btn.disabled) return;
       if (S.discardWait){
         var tile = parseInt(btn.getAttribute('data-tile'), 10);
-        var w = S.discardWait; S.discardWait = null;
+        if (S.selected !== tile){ S.selected = tile; render(); return; }
+        var w = S.discardWait; S.discardWait = null; S.selected = null;
         render();
         w.resolve({type:'discard', tile:tile});
       }
@@ -1288,21 +1480,29 @@
         pr.resolve(id);
       } else if (S.discardWait && id){
         var w = S.discardWait;
-        if (id === '__tsumo'){ S.discardWait = null; render(); w.resolve({type:'tsumo'}); }
+        if (id === '__tsumo'){ S.discardWait = null; S.selected = null; render(); w.resolve({type:'tsumo'}); }
         else if (id.indexOf('__kong') === 0){
           var k = w.kongs[parseInt(id.slice(6),10)];
-          S.discardWait = null; render(); w.resolve({type:'kong', kong:k});
+          S.discardWait = null; S.selected = null; render(); w.resolve({type:'kong', kong:k});
         }
       }
     });
-    document.getElementById('nextRoundBtn').addEventListener('click', function(){
-      document.getElementById('endOverlay').classList.remove('show');
+    function startNextRound(){
+      document.getElementById('settleScreen').classList.remove('show');
       S.dealer = (S.dealer + 1) % 4; S.round++;
       logLines = []; logMsg('');
       startRound();
+    }
+    document.getElementById('nextRoundBtn').addEventListener('click', startNextRound);
+    document.getElementById('toolbarNext').addEventListener('click', startNextRound);
+    document.getElementById('settleBackBtn').addEventListener('click', closeEndModal);
+    document.getElementById('settleChangeBtn').addEventListener('click', function(){
+      document.getElementById('settleScreen').classList.remove('show');
+      logLines = [];
+      resetMatch();
     });
     document.getElementById('resetBtn').addEventListener('click', function(){
-      document.getElementById('endOverlay').classList.remove('show');
+      document.getElementById('settleScreen').classList.remove('show');
       logLines = [];
       resetMatch();
     });
@@ -1315,6 +1515,24 @@
     document.getElementById('rulesOk').addEventListener('click', function(){
       document.getElementById('rulesOverlay').classList.remove('show');
     });
+
+    /* measured visible-viewport size for the rotated portrait frame (see CSS):
+       innerWidth/innerHeight (and visualViewport) already exclude the
+       Safari toolbar, unlike 100vh — this keeps the rotated table bar-free */
+    function fitViewport(){
+      var w = window.innerWidth, h = window.innerHeight;
+      if (window.visualViewport){
+        w = Math.round(window.visualViewport.width);
+        h = Math.round(window.visualViewport.height);
+      }
+      var st = document.documentElement.style;
+      st.setProperty('--appw', w + 'px');
+      st.setProperty('--apph', h + 'px');
+    }
+    window.addEventListener('resize', fitViewport);
+    window.addEventListener('orientationchange', function(){ setTimeout(fitViewport, 80); });
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', fitViewport);
+    fitViewport();
 
     resetMatch();
     </script>
