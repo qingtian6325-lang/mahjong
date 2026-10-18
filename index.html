@@ -492,16 +492,21 @@
       }
 
       /* ---------- portrait phones: rotate the whole game 90° into a landscape table ----------
-         JS measures the real visible viewport (innerWidth / visualViewport,
-         which already exclude the Safari toolbar) into --appw / --apph.
-         The game root is exactly that size, turned sideways with
-         translateX + rotate(90deg) around the top-left origin, so the
-         rotated table fills the visible screen precisely — no black bars.
-         Everything (popups included) lives inside the rotated root and
-         lays out in the landscape coordinate system. Tile sizes key off
-         --apph, the frame's long side, so they scale with the screen. */
+         The size is NOT taken from CSS viewport units: on Android Chrome the
+         top/bottom toolbars resize dynamically, so 100dvh/100dvw do not match
+         the actually visible area and the table ends up short or stretched.
+         Instead JS (fitViewport below) measures the real visible viewport —
+         window.innerWidth/innerHeight, cross-checked against visualViewport
+         and re-measured on every visualViewport resize — into --appw/--apph,
+         plus the toolbar's real height into --tbh. The game root is exactly
+         that size, turned sideways with translateX + rotate(90deg) around
+         the top-left origin, so the rotated table fills the visible screen
+         precisely — no black bars, no cropping. Everything (popups
+         included) lives inside the rotated root and lays out in the
+         landscape coordinate system. Tile sizes key off --apph, the frame's
+         long side, so they scale with the screen. */
       @media (orientation:portrait) and (max-width:640px) and (pointer:coarse){
-        html,body{ height:100%; overflow:hidden; }
+        html,body{ height:100%; overflow:hidden; overscroll-behavior:none; }
         #app{
           position:fixed; top:0; left:0;
           width:var(--apph, 100dvh); height:var(--appw, 100vw);
@@ -519,7 +524,7 @@
           --tile-d: clamp(13px, calc(var(--apph, 100dvh) * .02), 19px);
         }
         .toolbar{ padding:4px 12px; }
-        .table{ min-height:0; height:calc(var(--appw, 100vw) - 46px); padding:6px; border-width:8px; border-radius:18px; gap:4px; }
+        .table{ min-height:0; height:calc(var(--appw, 100vw) - var(--tbh, 46px)); padding:6px; border-width:8px; border-radius:18px; gap:4px; }
         .table > .seat-top, .table > .human-area{ flex:none; }
         .table > .mid-row{ flex:1 1 0; min-height:0; }
         .seat-top{ flex-direction:row; flex-wrap:wrap; justify-content:center; align-items:center; }
@@ -2265,23 +2270,50 @@
       showMenuScreen();
     }
 
-    /* measured visible-viewport size for the rotated portrait frame (see CSS):
-       innerWidth/innerHeight (and visualViewport) already exclude the
-       Safari toolbar, unlike 100vh — this keeps the rotated table bar-free */
+    /* Measured visible-viewport size for the rotated portrait frame (see CSS).
+       Android Chrome's top/bottom toolbars resize dynamically, so CSS
+       viewport units (100dvh/100dvw) do not match the actually visible
+       area — the rotated table came out short or stretched there. Measure
+       the real thing instead: window.innerWidth/innerHeight, cross-checked
+       against visualViewport (any part covered by browser chrome is not
+       visible, so the smaller value wins), and re-measure whenever the
+       visual viewport resizes, i.e. the moment a toolbar slides in or out.
+       --tbh is the toolbar row's measured height, so the table fills the
+       rest of the frame exactly instead of guessing a fixed 46px. */
     function fitViewport(){
-      var w = window.innerWidth, h = window.innerHeight;
-      if (window.visualViewport){
-        w = Math.round(window.visualViewport.width);
-        h = Math.round(window.visualViewport.height);
+      // While the soft keyboard is up (typing a name / room code on
+      // Android) the viewport shrinks hard; refitting then would squash
+      // the rotated frame. Keep the last good size until the field blurs
+      // (the focusout listener below refits right after).
+      var ae = document.activeElement;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+      var vv = window.visualViewport;
+      // A pinch zoom in progress also resizes the visual viewport; the
+      // layout must not chase the user's fingers.
+      if (vv && vv.scale && Math.abs(vv.scale - 1) > 0.01) return;
+      var w = window.innerWidth || 0, h = window.innerHeight || 0;
+      if (vv){
+        if (vv.width) w = Math.min(w || vv.width, Math.round(vv.width));
+        if (vv.height) h = Math.min(h || vv.height, Math.round(vv.height));
       }
+      if (!w || !h) return;
       var st = document.documentElement.style;
       st.setProperty('--appw', w + 'px');
       st.setProperty('--apph', h + 'px');
+      var tb = document.querySelector('.toolbar');
+      if (tb && tb.offsetHeight) st.setProperty('--tbh', tb.offsetHeight + 'px');
     }
     window.addEventListener('resize', fitViewport);
-    window.addEventListener('orientationchange', function(){ setTimeout(fitViewport, 80); });
+    window.addEventListener('orientationchange', function(){ setTimeout(fitViewport, 80); setTimeout(fitViewport, 350); });
     if (window.visualViewport) window.visualViewport.addEventListener('resize', fitViewport);
+    window.addEventListener('load', fitViewport);
+    window.addEventListener('pageshow', fitViewport);
+    document.addEventListener('focusout', function(){ setTimeout(fitViewport, 60); });
     fitViewport();
+    // Android toolbars settle after first paint; re-measure shortly after
+    // load so a late toolbar state never leaves the frame a size stale.
+    setTimeout(fitViewport, 300);
+    setTimeout(fitViewport, 1000);
 
     /* ================= menu wiring ================= */
     function myDisplayName(){
