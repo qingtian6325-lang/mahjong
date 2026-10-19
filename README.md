@@ -51,15 +51,15 @@
 ### 7. 📱 移动端下载与安装指南 (Android APK / iOS IPA / PWA)
 
 #### ① 安卓手机 (Android APK 直装)
-- **本地直装 APK**：仓库已包含预编译最新版原生 APK：[`release/Mahjong-v2.5.1.apk`](release/Mahjong-v2.5.1.apk)（约 4.2MB），手机微信/QQ传输或电脑复制到安卓手机即可直接点击安装运行！
+- **本地直装 APK**：仓库已包含预编译最新版原生 APK：[`release/Mahjong-v2.5.2.apk`](release/Mahjong-v2.5.2.apk)（约 4.2MB），手机微信/QQ传输或电脑复制到安卓手机即可直接点击安装运行！
 - **GitHub Actions 云端自动构建**：每次提交推送至 GitHub，Ubuntu 云端服务器全自动编译生成最新 Debug APK。
 
 #### ② 苹果手机 (iOS IPA 安装包 & PWA)
-- **云端全自动编译 IPA**：每次代码推送至 GitHub，GitHub Actions 会自动启动 `macos-14` (Apple Silicon) 虚拟机，调用 Xcode 全自动编译并打包出标准 iOS 安装包 `Mahjong-iOS-v2.5.1.ipa` 与 `Mahjong-iOS-App.zip`。
+- **云端全自动编译 IPA**：每次代码推送至 GitHub，GitHub Actions 会自动启动 `macos-14` (Apple Silicon) 虚拟机，调用 Xcode 全自动编译并打包出标准 iOS 安装包 `Mahjong-iOS-v2.5.2.ipa` 与 `Mahjong-iOS-App.zip`。
 - **iOS 三种安装运行方式**：
   1. **Safari 添加到主屏幕 (PWA 极速安装，最推荐)**：在 iPhone / iPad Safari 浏览器打开网页 `https://qingtian6325-lang.github.io/mahjong/`，点击底部分享按钮 -> **「添加到主屏幕」(Add to Home Screen)**，无需签名、无需数据线，立即可拥有独立全屏的原生 App 体验！
-  2. **巨魔商店 / TrollStore (永久免签名)**：iOS 14.0~17.0 支持 TrollStore 的设备，直接下载 Actions 或 Release 输出的 `Mahjong-iOS-v2.5.1.ipa`，用 TrollStore 打开即可永久秒安装。
-  3. **AltStore / Sideloadly / 爱思助手**：将 iPhone 连接电脑，使用免费的 Apple ID 证书将 `Mahjong-iOS-v2.5.1.ipa` 签名安装到手机。
+  2. **巨魔商店 / TrollStore (永久免签名)**：iOS 14.0~17.0 支持 TrollStore 的设备，直接下载 Actions 或 Release 输出的 `Mahjong-iOS-v2.5.2.ipa`，用 TrollStore 打开即可永久秒安装。
+  3. **AltStore / Sideloadly / 爱思助手**：将 iPhone 连接电脑，使用免费的 Apple ID 证书将 `Mahjong-iOS-v2.5.2.ipa` 签名安装到手机。
 
 #### ③ 网页直接访问 (Web)
 项目已部署在 GitHub Pages，直接浏览器打开即可玩：

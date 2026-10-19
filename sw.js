@@ -2,16 +2,16 @@
  * Mahjong PWA Service Worker
  * Enables offline caching and fast instant startup.
  */
-var CACHE_NAME = 'mahjong-v2-5-1';
+var CACHE_NAME = 'mahjong-v2-5-2';
 var ASSETS = [
   './',
   './index.html',
-  './style.css?v=2.5.1',
-  './audio.js?v=2.5.1',
-  './engine.js?v=2.5.1',
-  './network.js?v=2.5.1',
-  './qr.js?v=2.5.1',
-  './app.js?v=2.5.1',
+  './style.css?v=2.5.2',
+  './audio.js?v=2.5.2',
+  './engine.js?v=2.5.2',
+  './network.js?v=2.5.2',
+  './qr.js?v=2.5.2',
+  './app.js?v=2.5.2',
   './icon.svg',
   './manifest.webmanifest'
 ];

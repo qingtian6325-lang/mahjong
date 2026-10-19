@@ -14,7 +14,7 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   <title>麻将大师 · 豪华翡翠雀台</title>
-  <link rel="stylesheet" href="./style.css?v=2.5.1" />
+  <link rel="stylesheet" href="./style.css?v=2.5.2" />
 </head>
 <body>
   <!-- Mobile Portrait Orientation Notice -->
@@ -51,7 +51,7 @@
         <div class="seat-container-top">
           <div class="seat-badge" id="seatBadge_top">
             <div class="seat-avatar av-2" id="avatar_top">
-              美
+              <span id="avatarLetter_top">美</span>
               <span class="seat-dealer-tag" id="dealerTag_top" style="display:none">庄</span>
             </div>
             <div class="seat-meta">
@@ -68,7 +68,7 @@
         <div class="seat-container-left">
           <div class="seat-badge" id="seatBadge_left">
             <div class="seat-avatar av-3" id="avatar_left">
-              王
+              <span id="avatarLetter_left">王</span>
               <span class="seat-dealer-tag" id="dealerTag_left" style="display:none">庄</span>
             </div>
             <div class="seat-meta">
@@ -124,7 +124,7 @@
         <div class="seat-container-right">
           <div class="seat-badge" id="seatBadge_right">
             <div class="seat-avatar av-1" id="avatar_right">
-              强
+              <span id="avatarLetter_right">强</span>
               <span class="seat-dealer-tag" id="dealerTag_right" style="display:none">庄</span>
             </div>
             <div class="seat-meta">
@@ -141,13 +141,16 @@
         <div class="seat-container-bottom">
           <!-- Human Info & Exposed Melds Row -->
           <div class="human-top-row">
-            <div class="seat-badge" id="seatBadge_human">
+            <div class="seat-badge" id="seatBadge_human" title="点击自定义雀神大名">
               <div class="seat-avatar av-0" id="avatar_human">
-                你
+                <span id="avatarLetter_human">你</span>
                 <span class="seat-dealer-tag" id="dealerTag_human" style="display:none">庄</span>
               </div>
               <div class="seat-meta">
-                <div class="seat-name" id="seatName_human">你自己</div>
+                <div class="seat-name" id="seatName_human">
+                  <span id="seatNameText_human">你自己</span>
+                  <span class="seat-edit-icon" title="点击修改大名">✏️</span>
+                </div>
                 <div class="seat-score"><span class="score-coin"></span><span id="seatScore_human">0</span></div>
               </div>
             </div>
@@ -262,7 +265,7 @@
         <div class="mode-nickname-bar">
           <span class="mode-nickname-label">雀神大名：</span>
           <div class="mode-nickname-input-wrap">
-            <input id="inputWelcomeName" maxlength="8" placeholder="输入大名或随机生成" />
+            <input id="inputWelcomeName" maxlength="8" placeholder="自定义大名（留空则系统随机）" />
             <button class="mode-dice-btn" id="btnRandomName" type="button" title="随机生成昵称">🎲 随机</button>
           </div>
         </div>
@@ -307,7 +310,7 @@
             <button class="mode-mini-btn" id="btnModeQuickSfx">🔊 音效: 开</button>
             <button class="mode-mini-btn" id="btnModeQuickRules">📜 规则说明</button>
           </div>
-          <div class="mode-version-tip">v2.5.0 · 跨平台 iOS / Android / Web</div>
+          <div class="mode-version-tip">v2.5.2 · 跨平台 iOS / Android / Web</div>
         </div>
       </div>
     </div>
@@ -320,9 +323,12 @@
         <div class="modal-sub">支持手机端、平板、电脑多端同台联机，输入房间号即可进入</div>
 
         <div style="display:flex;flex-direction:column;gap:8px;">
-          <label style="font-size:13px;color:var(--text-muted);">你的昵称
-            <input id="inputMyName" maxlength="8" placeholder="输入昵称（不填用默认）"
-                   style="width:100%;padding:8px 12px;border-radius:8px;background:rgba(0,0,0,0.3);border:1px solid rgba(212,175,55,0.4);color:#fff;margin-top:4px;" />
+          <label style="font-size:13px;color:var(--text-muted);">你的大名 / 昵称
+            <div style="display:flex;gap:8px;margin-top:4px;">
+              <input id="inputMyName" maxlength="8" placeholder="自定义昵称（留空则系统随机）"
+                     style="flex:1;padding:8px 12px;border-radius:8px;background:rgba(0,0,0,0.3);border:1px solid rgba(212,175,55,0.4);color:#fff;" />
+              <button class="mode-dice-btn" id="btnLobbyRandomName" type="button" title="随机生成昵称" style="padding:6px 12px;">🎲 随机</button>
+            </div>
           </label>
         </div>
 
@@ -466,6 +472,20 @@
         <div class="modal-sub">个性化牌桌风格与偏好</div>
 
         <div style="display:flex;flex-direction:column;gap:14px;margin:10px 0;">
+          <!-- Player Nickname Section -->
+          <div>
+            <div style="font-size:13px;font-weight:bold;color:var(--gold-light);margin-bottom:8px;">👤 雀神大名（自定义昵称）</div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input id="inputSettingsName" maxlength="8" placeholder="自定义大名（留空则系统随机）"
+                     style="flex:1;padding:8px 12px;border-radius:8px;background:rgba(0,0,0,0.3);border:1px solid rgba(212,175,55,0.4);color:#fff;font-size:14px;" />
+              <button class="mode-dice-btn" id="btnSettingsRandomName" type="button" title="随机生成昵称" style="padding:7px 12px;">🎲 随机</button>
+              <button class="tb-btn" id="btnSettingsSaveName" style="padding:7px 14px;background:rgba(212,175,55,0.2);border-color:var(--gold);color:#ffd700;">保存</button>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">未设置时系统自动随机分配；随时可在此修改</div>
+          </div>
+
+          <hr style="border:none;border-top:1px solid rgba(212,175,55,0.2);" />
+
           <div>
             <div style="font-size:13px;font-weight:bold;color:var(--gold-light);margin-bottom:8px;">牌桌呢绒主题</div>
             <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:8px;">
@@ -499,7 +519,7 @@
 
           <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid rgba(212,175,55,0.2);">
             <div>
-              <div style="font-size:13px;font-weight:bold;color:var(--gold-light);">版本更新 (v2.5.1)</div>
+              <div style="font-size:13px;font-weight:bold;color:var(--gold-light);">版本更新 (v2.5.2)</div>
               <div style="font-size:11px;color:var(--text-muted);">一键清除旧缓存并拉取最新全套代码</div>
             </div>
             <button class="tb-btn" id="btnForceUpdateApp" style="padding:6px 14px;background:rgba(212,175,55,0.2);border-color:var(--gold);color:#ffd700;">🔄 强制刷新最新版</button>
@@ -509,22 +529,41 @@
         <button class="primary-btn modal-close-action" style="margin-top:6px;">完成</button>
       </div>
     </div>
+
+    <!-- Modal: Quick Rename (点击底部头像或名字即可快速修改) -->
+    <div class="modal-overlay" id="modalRename">
+      <div class="modal-card" style="max-width:380px;">
+        <button class="close-btn">✕</button>
+        <div class="modal-title">✏️ 自定义雀神大名</div>
+        <div class="modal-sub">输入你心仪的麻将封号，留空则由系统自动随机分配</div>
+        <div style="display:flex;gap:8px;margin:14px 0 8px 0;align-items:center;">
+          <input id="inputQuickRename" maxlength="8" placeholder="自定义大名（留空则系统随机）"
+                 style="flex:1;padding:9px 12px;border-radius:8px;background:rgba(0,0,0,0.3);border:1px solid rgba(212,175,55,0.4);color:#fff;font-size:15px;font-weight:bold;" />
+          <button class="mode-dice-btn" id="btnQuickRandomName" type="button" title="随机生成昵称" style="padding:8px 14px;">🎲 随机</button>
+        </div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:12px;">未输入名称时，系统将为你抽取好运雀神封号</div>
+        <div style="display:flex;gap:10px;">
+          <button class="ghost-btn modal-close-action" style="flex:1;">取消</button>
+          <button class="primary-btn orange" id="btnConfirmQuickRename" style="flex:1.5;">确认保存</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Supabase Realtime SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Game Scripts -->
-  <script src="./audio.js?v=2.5.1"></script>
-  <script src="./engine.js?v=2.5.1"></script>
-  <script src="./network.js?v=2.5.1"></script>
-  <script src="./qr.js?v=2.5.1"></script>
-  <script src="./app.js?v=2.5.1"></script>
+  <script src="./audio.js?v=2.5.2"></script>
+  <script src="./engine.js?v=2.5.2"></script>
+  <script src="./network.js?v=2.5.2"></script>
+  <script src="./qr.js?v=2.5.2"></script>
+  <script src="./app.js?v=2.5.2"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=2.5.1').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=2.5.2').then(function(reg) {
           reg.update();
         }).catch(function(e) {
           console.log('SW register failed: ', e);

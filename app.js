@@ -244,12 +244,91 @@
     return false;
   }
 
-  function singleSpec() {
-    var myName = '雀圣';
+  /* ================= Player Nickname Management ================= */
+  var DEFAULT_MAHJONG_NAMES = [
+    '雀仙发哥', '十三幺', '逢赌必赢', '天胡一色', '九莲宝灯',
+    '自摸手软', '海底捞月', '杠上开花', '大四喜', '一把自摸',
+    '清一色雀王', '胡牌狂魔', '雀神小李', '东风不败', '雀圣'
+  ];
+
+  function pickRandomMahjongName() {
+    return DEFAULT_MAHJONG_NAMES[Math.floor(Math.random() * DEFAULT_MAHJONG_NAMES.length)];
+  }
+
+  function getSavedPlayerName() {
     try {
-      var saved = localStorage.getItem('mj_player_name');
-      if (saved && saved.trim()) myName = saved.trim();
+      var s = localStorage.getItem('mj_player_name');
+      if (s && s.trim()) return s.trim();
     } catch (e) {}
+    return '';
+  }
+
+  // "如果没有才选一个给玩家" (若玩家未输入且未保存过，才自动分配随机好运雀神封号)
+  function getOrAssignPlayerName() {
+    var saved = getSavedPlayerName();
+    if (saved) return saved;
+
+    var w = document.getElementById('inputWelcomeName');
+    if (w && w.value && w.value.trim()) {
+      var val = w.value.trim();
+      setPlayerName(val, false);
+      return val;
+    }
+    var l = document.getElementById('inputMyName');
+    if (l && l.value && l.value.trim()) {
+      var val = l.value.trim();
+      setPlayerName(val, false);
+      return val;
+    }
+    var s = document.getElementById('inputSettingsName');
+    if (s && s.value && s.value.trim()) {
+      var val = s.value.trim();
+      setPlayerName(val, false);
+      return val;
+    }
+    var q = document.getElementById('inputQuickRename');
+    if (q && q.value && q.value.trim()) {
+      var val = q.value.trim();
+      setPlayerName(val, false);
+      return val;
+    }
+
+    // 确实未输入 -> 随机挑选好运麻将封号并保存
+    var randomName = pickRandomMahjongName();
+    setPlayerName(randomName, false);
+    return randomName;
+  }
+
+  function setPlayerName(name, updateCurrentGame) {
+    var trimmed = (name || '').trim();
+    if (trimmed) {
+      try { localStorage.setItem('mj_player_name', trimmed); } catch (e) {}
+    } else {
+      try { localStorage.removeItem('mj_player_name'); } catch (e) {}
+    }
+
+    var w = document.getElementById('inputWelcomeName');
+    if (w && w.value !== trimmed) w.value = trimmed;
+    var l = document.getElementById('inputMyName');
+    if (l && l.value !== trimmed) l.value = trimmed;
+    var s = document.getElementById('inputSettingsName');
+    if (s && s.value !== trimmed) s.value = trimmed;
+    var q = document.getElementById('inputQuickRename');
+    if (q && q.value !== trimmed) q.value = trimmed;
+
+    if (updateCurrentGame && S && S.players && S.players[ME]) {
+      var finalName = trimmed || getOrAssignPlayerName();
+      S.players[ME].name = finalName;
+      S.players[ME].av = finalName.charAt(0);
+      render();
+      if (MODE !== 'single') {
+        scheduleSync();
+      }
+    }
+  }
+
+  function singleSpec() {
+    var myName = getOrAssignPlayerName();
     return [
       { name: myName, ctrl: 'local', av: myName.charAt(0) },
       { name: Engine.BOT_NAMES[0], ctrl: 'bot', av: '强' },
@@ -1553,8 +1632,13 @@
         seatBadge.className = 'seat-badge' + (absSeat === S.current ? ' active-turn' : '');
       }
 
-      var nameEl = document.getElementById('seatName_' + prefix);
+      var nameEl = document.getElementById('seatNameText_' + prefix) || document.getElementById('seatName_' + prefix);
       if (nameEl) nameEl.textContent = p.name;
+
+      var avEl = document.getElementById('avatarLetter_' + prefix);
+      if (avEl) {
+        avEl.textContent = p.av || (p.name ? p.name.charAt(0) : '雀');
+      }
 
       var scoreEl = document.getElementById('seatScore_' + prefix);
       if (scoreEl) scoreEl.textContent = S.scores[absSeat] || 0;
@@ -1984,47 +2068,131 @@
     // Restore Theme & Nickname from LocalStorage
     var welcomeInput = document.getElementById('inputWelcomeName');
     var lobbyInput = document.getElementById('inputMyName');
-    var defaultNames = ['雀圣', '十三幺', '逢赌必赢', '天胡一色', '九莲宝灯', '自摸手软', '海底捞月', '杠上开花', '雀仙发哥', '大四喜', '一把自摸', '清一色雀王'];
+    var settingsInput = document.getElementById('inputSettingsName');
+    var quickInput = document.getElementById('inputQuickRename');
 
-    var currentName = '雀圣';
     try {
       var savedTheme = localStorage.getItem('mj_theme') || 'emerald';
       document.body.setAttribute('data-theme', savedTheme);
       document.querySelectorAll('.theme-choice-btn').forEach(function(b) {
         b.classList.toggle('active', b.getAttribute('data-theme') === savedTheme);
       });
-
-      var savedName = localStorage.getItem('mj_player_name');
-      if (savedName && savedName.trim()) currentName = savedName.trim();
     } catch (e) {}
 
-    function updatePlayerName(val) {
-      val = (val || '').trim() || '雀圣';
-      currentName = val;
-      if (welcomeInput) welcomeInput.value = val;
-      if (lobbyInput) lobbyInput.value = val;
-      try { localStorage.setItem('mj_player_name', val); } catch (e) {}
+    // Initial sync: if player previously saved a custom name, show it; if not, keep inputs empty
+    var initialSavedName = getSavedPlayerName();
+    if (initialSavedName) {
+      setPlayerName(initialSavedName, false);
+    } else {
+      setPlayerName('', false);
     }
 
-    updatePlayerName(currentName);
-
+    // Input listeners
+    function onNameInputChange() {
+      var val = (this.value || '').trim();
+      setPlayerName(val, false);
+    }
     if (welcomeInput) {
-      welcomeInput.addEventListener('change', function() { updatePlayerName(this.value); });
-      welcomeInput.addEventListener('input', function() { updatePlayerName(this.value); });
+      welcomeInput.addEventListener('input', onNameInputChange);
+      welcomeInput.addEventListener('change', onNameInputChange);
     }
     if (lobbyInput) {
-      lobbyInput.addEventListener('change', function() { updatePlayerName(this.value); });
-      lobbyInput.addEventListener('input', function() { updatePlayerName(this.value); });
+      lobbyInput.addEventListener('input', onNameInputChange);
+      lobbyInput.addEventListener('change', onNameInputChange);
+    }
+    if (settingsInput) {
+      settingsInput.addEventListener('input', onNameInputChange);
+      settingsInput.addEventListener('change', onNameInputChange);
+    }
+    if (quickInput) {
+      quickInput.addEventListener('input', onNameInputChange);
+      quickInput.addEventListener('change', onNameInputChange);
     }
 
-    // Random nickname generator button
+    // Random nickname generator button in Welcome Modal
     var btnRandom = document.getElementById('btnRandomName');
     if (btnRandom) {
       btnRandom.addEventListener('click', function() {
         Audio.playButton();
-        var pick = defaultNames[Math.floor(Math.random() * defaultNames.length)];
-        updatePlayerName(pick);
-        showToast('已随机生成昵称：' + pick);
+        var pick = pickRandomMahjongName();
+        setPlayerName(pick, false);
+        showToast('已随机生成大名：' + pick);
+      });
+    }
+
+    // Random nickname generator button in Lobby Modal
+    var btnLobbyRandom = document.getElementById('btnLobbyRandomName');
+    if (btnLobbyRandom) {
+      btnLobbyRandom.addEventListener('click', function() {
+        Audio.playButton();
+        var pick = pickRandomMahjongName();
+        setPlayerName(pick, false);
+        showToast('已随机生成大名：' + pick);
+      });
+    }
+
+    // Random & Save buttons in Settings Modal
+    var btnSettingsRandom = document.getElementById('btnSettingsRandomName');
+    if (btnSettingsRandom) {
+      btnSettingsRandom.addEventListener('click', function() {
+        Audio.playButton();
+        var pick = pickRandomMahjongName();
+        setPlayerName(pick, true);
+        showToast('已随机生成大名：' + pick);
+      });
+    }
+    var btnSettingsSave = document.getElementById('btnSettingsSaveName');
+    if (btnSettingsSave) {
+      btnSettingsSave.addEventListener('click', function() {
+        Audio.playButton();
+        var val = (settingsInput ? settingsInput.value : '').trim();
+        if (!val) {
+          val = pickRandomMahjongName();
+          showToast('未输入名字，已为你分配好运封号：' + val);
+        } else {
+          showToast('✅ 雀神大名已保存为：' + val);
+        }
+        setPlayerName(val, true);
+      });
+    }
+
+    // Random & Save buttons in Quick Rename Modal
+    var btnQuickRandom = document.getElementById('btnQuickRandomName');
+    if (btnQuickRandom) {
+      btnQuickRandom.addEventListener('click', function() {
+        Audio.playButton();
+        var pick = pickRandomMahjongName();
+        setPlayerName(pick, false);
+        showToast('已随机生成大名：' + pick);
+      });
+    }
+    var btnConfirmQuick = document.getElementById('btnConfirmQuickRename');
+    if (btnConfirmQuick) {
+      btnConfirmQuick.addEventListener('click', function() {
+        Audio.playButton();
+        var val = (quickInput ? quickInput.value : '').trim();
+        if (!val) {
+          val = pickRandomMahjongName();
+          showToast('未输入名字，已为你分配好运封号：' + val);
+        } else {
+          showToast('✅ 雀神大名已修改为：' + val);
+        }
+        setPlayerName(val, true);
+        hideModal('modalRename');
+      });
+    }
+
+    // Clicking player's own seat badge on the table opens Quick Rename
+    var humanSeatBadge = document.getElementById('seatBadge_human');
+    if (humanSeatBadge) {
+      humanSeatBadge.addEventListener('click', function() {
+        Audio.playButton();
+        var cur = getSavedPlayerName() || (S && S.players && S.players[ME] ? S.players[ME].name : '');
+        setPlayerName(cur, false);
+        showModal('modalRename');
+        if (quickInput) {
+          setTimeout(function() { quickInput.focus(); }, 150);
+        }
       });
     }
 
@@ -2251,13 +2419,19 @@
     // Online Room Actions (Create & Join)
     document.getElementById('btnCreateRoom').addEventListener('click', function() {
       var code = Network.genRoomCode();
-      var name = document.getElementById('inputMyName').value || '房主';
+      var lInput = document.getElementById('inputMyName');
+      var entered = (lInput ? lInput.value : '').trim();
+      var name = entered || getSavedPlayerName() || pickRandomMahjongName();
+      setPlayerName(name, false);
       connectOnlineRoom(code, true, name);
     });
 
     document.getElementById('btnJoinRoom').addEventListener('click', function() {
       var code = (document.getElementById('inputJoinCode').value || '').toUpperCase().trim();
-      var name = document.getElementById('inputMyName').value || '玩家';
+      var lInput = document.getElementById('inputMyName');
+      var entered = (lInput ? lInput.value : '').trim();
+      var name = entered || getSavedPlayerName() || pickRandomMahjongName();
+      setPlayerName(name, false);
       if (code.length !== 4) {
         showToast('请输入正确的4位房号');
         return;
@@ -2281,7 +2455,10 @@
     if (btnStartSingle) {
       btnStartSingle.addEventListener('click', function() {
         Audio.playButton();
-        if (welcomeInput) updatePlayerName(welcomeInput.value);
+        var wInput = document.getElementById('inputWelcomeName');
+        var entered = (wInput ? wInput.value : '').trim();
+        var name = entered || getSavedPlayerName() || pickRandomMahjongName();
+        setPlayerName(name, true);
         hideModal('modalModeSelect');
         Audio.startBGM();
         MODE = 'single';
@@ -2296,7 +2473,11 @@
     if (btnStartMulti) {
       btnStartMulti.addEventListener('click', function() {
         Audio.playButton();
-        if (welcomeInput) updatePlayerName(welcomeInput.value);
+        var wInput = document.getElementById('inputWelcomeName');
+        var entered = (wInput ? wInput.value : '').trim();
+        if (entered) {
+          setPlayerName(entered, false);
+        }
         hideModal('modalModeSelect');
         Audio.startBGM();
         var inRoom = (MODE !== 'single');

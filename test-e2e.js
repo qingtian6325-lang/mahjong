@@ -438,6 +438,43 @@ async function runTests() {
     throw new Error('Test 10 failed: speakTile did not output 二条!');
   }
 
+  // TEST 11: Testing Custom Player Name, Seat Avatar & If-Empty Auto Random
+  console.log('\n[TEST 11] Testing Custom Nickname, Table Avatar & Empty Auto-Random...');
+  // 1. Click human seat badge to open quick rename
+  await page.click('#seatBadge_human');
+  await page.waitForTimeout(300);
+  const renameModalShown = await page.$eval('#modalRename', el => el.classList.contains('show'));
+  console.log(`- Quick rename modal opened on seat click: ${renameModalShown}`);
+  if (!renameModalShown) throw new Error('Quick rename modal did not open on seat click!');
+
+  // Set custom nickname: "赌神高进"
+  await page.fill('#inputQuickRename', '赌神高进');
+  await page.click('#btnConfirmQuickRename');
+  await page.waitForTimeout(300);
+
+  const customNameOnTable = await page.$eval('#seatNameText_human', el => el.textContent.trim());
+  const customAvatarOnTable = await page.$eval('#avatarLetter_human', el => el.textContent.trim());
+  console.log(`- Custom name on table: "${customNameOnTable}", Avatar letter: "${customAvatarOnTable}"`);
+  if (customNameOnTable !== '赌神高进' || customAvatarOnTable !== '赌') {
+    throw new Error(`Test 11 failed: custom name mismatch! Got name="${customNameOnTable}", avatar="${customAvatarOnTable}"`);
+  }
+
+  // 2. Clear name in Settings and save -> should auto-pick random name for player ("如果没有才选一个给玩家")
+  await page.click('#btnSettings');
+  await page.waitForTimeout(300);
+  await page.fill('#inputSettingsName', '');
+  await page.click('#btnSettingsSaveName');
+  await page.waitForTimeout(300);
+
+  const randomNameOnTable = await page.$eval('#seatNameText_human', el => el.textContent.trim());
+  const randomAvatarOnTable = await page.$eval('#avatarLetter_human', el => el.textContent.trim());
+  console.log(`- Auto-assigned random name when empty: "${randomNameOnTable}", Avatar: "${randomAvatarOnTable}"`);
+  if (!randomNameOnTable || randomNameOnTable.length === 0 || randomAvatarOnTable !== randomNameOnTable.charAt(0)) {
+    throw new Error(`Test 11 failed: Auto-random name assignment failed!`);
+  }
+  await page.click('#modalSettings .modal-close-action');
+  await page.waitForTimeout(200);
+
   // FINALIZE
   console.log('\n--- TEST SUMMARY ---');
   console.log(`Console Errors: ${consoleErrors.length}`);
