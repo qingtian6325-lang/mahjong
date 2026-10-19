@@ -305,6 +305,88 @@ async function runTests() {
   await page.screenshot({ path: 'test-action-bar-priority.png' });
   console.log('- Action bar priority screenshot saved: test-action-bar-priority.png');
 
+  // TEST 9: Hu vs Peng Choice Confirm Modal, Dimmed Discards, Forbidden Discard & Melds Counter
+  console.log('\n[TEST 9] Testing Hu/Peng Modal, Dimmed Claimed Pool Tiles, Forbidden Discard & Melds Counter...');
+
+  const test9Results = await page.evaluate(() => {
+    // 1. Test Choice Confirm Modal display
+    const modal = document.getElementById('choiceConfirmModal');
+    const titleEl = document.getElementById('choiceConfirmTitle');
+    const subEl = document.getElementById('choiceConfirmSub');
+    const btnHu = document.getElementById('choiceBtnHu');
+    const btnAlt = document.getElementById('choiceBtnAlt');
+    const btnCancel = document.getElementById('choiceBtnCancel');
+    modal.style.display = 'flex';
+    titleEl.textContent = '⚡ 雀仙提示：您当前可以直接【胡牌】胜出！';
+    subEl.textContent = '您当前手牌已可胡牌，刚才点击了【碰牌】。您希望立即胡牌胜出，还是确定放弃胡牌改选碰牌？（碰牌后必须打出一张手牌）';
+    btnAlt.textContent = '✋ 确定碰牌并出牌';
+
+    const modalVisible = window.getComputedStyle(modal).display === 'flex';
+
+    // 2. Test Claimed Pool Tile rendering
+    const pool = document.getElementById('discardPool_bottom');
+    pool.innerHTML = `
+      <div class="mj-tile claimed-pool-tile" data-tile="15">
+        <div class="tile-face"><span class="t-char t-c6">6</span><span class="t-name">筒</span></div>
+        <span class="claimed-badge">碰</span>
+      </div>
+    `;
+    const claimedTile = pool.querySelector('.claimed-pool-tile');
+    const claimedBadge = pool.querySelector('.claimed-badge');
+    const hasClaimedTile = !!claimedTile && claimedBadge.textContent === '碰';
+
+    // 3. Test Forbidden Discard badge on Hand
+    const handRow = document.getElementById('humanHandRow');
+    const originalHand = handRow.innerHTML;
+    handRow.innerHTML += `
+      <div class="mj-tile forbidden-discard" data-tile="14">
+        <div class="tile-face"><span class="t-char t-c5">5</span><span class="t-name">筒</span></div>
+        <span class="forbidden-discard-badge">🚫禁打</span>
+      </div>
+    `;
+    const forbiddenTile = handRow.querySelector('.forbidden-discard');
+    const forbiddenBadge = handRow.querySelector('.forbidden-discard-badge');
+    const hasForbiddenTile = !!forbiddenTile && forbiddenBadge.textContent.includes('🚫禁打');
+
+    // 4. Test Melds Counter Pill
+    const meldsArea = document.getElementById('humanMeldsArea');
+    meldsArea.innerHTML = '<span class="melds-counter-pill">碰×1 吃×1 · 共6张</span>';
+    const meldsPill = meldsArea.querySelector('.melds-counter-pill');
+    const hasMeldsPill = !!meldsPill && meldsPill.textContent.includes('共6张');
+
+    // 5. Test Turn Prompt Banner
+    const banner = document.getElementById('turnPromptBanner');
+    banner.textContent = '🔔 碰牌成功！请点击手牌打出一张牌 ⬆';
+    banner.style.display = 'flex';
+    const hasBanner = window.getComputedStyle(banner).display === 'flex';
+
+    return {
+      modalVisible,
+      hasClaimedTile,
+      hasForbiddenTile,
+      hasMeldsPill,
+      hasBanner
+    };
+  });
+
+  console.log(`- Choice confirm modal renders correctly: ${test9Results.modalVisible}`);
+  console.log(`- Dimmed claimed pool tile & badge render correctly: ${test9Results.hasClaimedTile}`);
+  console.log(`- Forbidden discard tile & '🚫禁打' badge render correctly: ${test9Results.hasForbiddenTile}`);
+  console.log(`- Melds counter pill renders correctly: ${test9Results.hasMeldsPill}`);
+  console.log(`- Turn prompt discard guidance banner renders correctly: ${test9Results.hasBanner}`);
+
+  if (!test9Results.modalVisible || !test9Results.hasClaimedTile || !test9Results.hasForbiddenTile || !test9Results.hasMeldsPill || !test9Results.hasBanner) {
+    throw new Error('Test 9 verification failed on one or more UI components!');
+  }
+
+  await page.screenshot({ path: 'test-claimed-and-choice-modal.png' });
+  console.log('- Choice modal & claimed tiles screenshot saved: test-claimed-and-choice-modal.png');
+
+  // Clean up modal
+  await page.evaluate(() => {
+    document.getElementById('choiceConfirmModal').style.display = 'none';
+  });
+
   // FINALIZE
   console.log('\n--- TEST SUMMARY ---');
   console.log(`Console Errors: ${consoleErrors.length}`);

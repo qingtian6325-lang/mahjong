@@ -1910,3 +1910,159 @@ html, body {
     padding-top: 4px !important;
   }
 }
+
+/* ================= Turn Prompt Banner ================= */
+.turn-prompt-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(14, 43, 26, 0.94);
+  border: 1.5px solid var(--gold);
+  border-radius: 20px;
+  padding: 4px 16px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), 0 0 10px rgba(212, 175, 55, 0.35);
+  animation: promptPulse 1.6s infinite alternate;
+  z-index: 35;
+  pointer-events: none;
+}
+@keyframes promptPulse {
+  from { transform: scale(1); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 6px rgba(212, 175, 55, 0.3); }
+  to { transform: scale(1.03); box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6), 0 0 14px rgba(212, 175, 55, 0.6); }
+}
+
+/* ================= Claimed Discards in Pool (在上面变成暗一点) ================= */
+.mj-tile.claimed-pool-tile {
+  opacity: 0.32 !important;
+  filter: grayscale(0.7) brightness(0.55) !important;
+  transform: scale(0.92);
+  box-shadow: none !important;
+  border: 1px dashed rgba(255, 255, 255, 0.4) !important;
+  position: relative;
+}
+.mj-tile .claimed-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  font-size: 9px;
+  line-height: 1;
+  padding: 1px 3px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #ffd700;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 215, 0, 0.6);
+  font-weight: 900;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* ================= Forbidden Discard (吃牌禁打同张) ================= */
+.mj-tile.forbidden-discard {
+  opacity: 0.55 !important;
+  filter: grayscale(0.5) brightness(0.8) !important;
+  cursor: not-allowed !important;
+}
+.forbidden-discard-badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  background: #c0392b;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 1.5px 3.5px;
+  border-radius: 4px;
+  border: 1px solid #ffd700;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+/* ================= Melds Count Pill ================= */
+.melds-counter-pill {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold-light);
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 10px;
+  padding: 2px 8px;
+  margin-right: 6px;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.melds-counter-pill.opp {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #e0e0e0;
+}
+
+/* ================= Choice Confirm Modal ================= */
+.choice-confirm-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.choice-confirm-card {
+  background: linear-gradient(145deg, #163625, #0a1f14);
+  border: 2px solid var(--gold);
+  border-radius: 18px;
+  padding: 20px 24px;
+  max-width: 440px;
+  text-align: center;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(212, 175, 55, 0.4);
+  animation: actionPopIn 0.3s ease-out;
+}
+.choice-confirm-title {
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--gold-light);
+  margin-bottom: 8px;
+}
+.choice-confirm-sub {
+  font-size: 13px;
+  color: #ecf0f1;
+  line-height: 1.6;
+  margin-bottom: 18px;
+}
+.choice-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.choice-btn {
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 0.15s ease;
+}
+.choice-btn.hu-btn {
+  background: linear-gradient(135deg, #e74c3c, #962d22);
+  border-color: #ffd700;
+  color: #fff;
+  box-shadow: 0 0 14px rgba(231, 76, 60, 0.7);
+}
+.choice-btn.alt-btn {
+  background: linear-gradient(135deg, #2980b9, #1a5276);
+  border-color: #70a1ff;
+  color: #fff;
+}
+.choice-btn.cancel-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #bdc3c7;
+}
+

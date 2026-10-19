@@ -155,6 +155,9 @@
             <div class="human-flowers-area" id="humanFlowersArea"></div>
           </div>
 
+          <!-- Turn Prompt Banner (出牌引导提示) -->
+          <div class="turn-prompt-banner" id="turnPromptBanner" style="display:none;"></div>
+
           <!-- Ting Assistant Tooltip -->
           <div class="ting-hint-card" id="tingHintCard" style="display:none;"></div>
 
@@ -204,6 +207,19 @@
     <div class="reconnect-pill" id="reconnectPill" style="display:none;">
       <span class="reconnect-pill-text" id="reconnectPillText">⚠️ 网络连接异常，正在重连...</span>
       <button class="reconnect-pill-btn" id="btnManualReconnect">重连</button>
+    </div>
+
+    <!-- Choice Confirm Modal: 当能胡时玩家点击碰/吃，提供明确确认选择，绝不丢失胡牌！ -->
+    <div class="choice-confirm-modal" id="choiceConfirmModal" style="display:none;">
+      <div class="choice-confirm-card">
+        <div class="choice-confirm-title" id="choiceConfirmTitle">⚡ 雀仙提示：您当前可以直接【胡牌】胜出！</div>
+        <div class="choice-confirm-sub" id="choiceConfirmSub">您刚刚点击了【碰牌】。确定要放弃胡牌、改选碰牌吗？（碰牌后必须打出一张手牌）</div>
+        <div class="choice-confirm-actions">
+          <button class="choice-btn hu-btn" id="choiceBtnHu">🀄 立即胡牌！</button>
+          <button class="choice-btn alt-btn" id="choiceBtnAlt">✋ 确定碰牌并出牌</button>
+          <button class="choice-btn cancel-btn" id="choiceBtnCancel">返回考虑</button>
+        </div>
+      </div>
     </div>
 
     <!-- Modal: Reconnect & Resume Active Match (断线重连恢复对局) -->
@@ -390,6 +406,12 @@
             · <b>明杠（第二级）</b>：若无人胡牌，杠牌玩家优先于碰牌和吃牌，成功杠下并摸补牌。<br/>
             · <b>碰牌（第三级）</b>：若无人胡或杠，碰牌玩家优先于下家的吃牌，直接截断吃牌。<br/>
             · <b>吃牌（第四级）</b>：最低裁决权，仅在下家且其余三家均无人胡、杠、碰时方可吃牌。
+          </p>
+          <p><b>7. 吃牌禁打同张规则：</b>
+            吃牌后当前回合必须打出一张手牌，且<b>绝对禁止打出刚刚吃进的那张牌</b>（吃哪张不能立即打哪张）。例如用 3万、5万 吃了 4万，本回合禁止打出 4万，手牌将标记为“🚫禁打”。
+          </p>
+          <p><b>8. 弃牌池吃碰暗化与张数统计：</b>
+            桌面上已被其他玩家吃、碰、杠走的牌将自动暗化（灰色半透明虚框）并标有角标，同时吃碰区实时统计各家吃碰总组数与张数，方便算牌防守。
           </p>
         </div>
         <button class="primary-btn modal-close-action" style="margin-top:8px;">我明白了</button>

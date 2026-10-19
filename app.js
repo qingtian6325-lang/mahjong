@@ -443,6 +443,8 @@
     sortHand(p);
     p.discards.push(dTile);
     S.lastDiscard = { seat: pIdx, tile: dTile };
+    p.guoshui = false; // 出牌后立即解除过水状态！
+    p.forbiddenDiscard = null; // 出牌后解除吃牌禁打限制！
 
     Audio.playTileDrop();
     render();
@@ -605,6 +607,7 @@
         var gp = S.players[gs];
         removeFromHand(gp, tile, 3);
         gp.melds.push({ kind: 'kong', tiles: [tile, tile, tile, tile], from: discarder });
+        markDiscardClaimed(discarder, tile, 'gang', gs);
         settleInstant(gs, 2, '明杠');
         showVFX('杠');
         Audio.playGang();
@@ -620,6 +623,8 @@
         var pp = S.players[ps];
         removeFromHand(pp, tile, 2);
         pp.melds.push({ kind: 'pon', tiles: [tile, tile, tile], from: discarder });
+        markDiscardClaimed(discarder, tile, 'peng', ps);
+        pp.justPeng = true;
         showVFX('碰');
         Audio.playPeng();
         scheduleSync();
@@ -638,6 +643,9 @@
         if (tIdx >= 0) toRemove.splice(tIdx, 1);
         toRemove.forEach(function(t) { removeFromHand(cp, t, 1); });
         cp.melds.push({ kind: 'chi', tiles: mTiles, from: discarder });
+        markDiscardClaimed(discarder, tile, 'chi', cs);
+        // 规则限制：吃牌后本回合必须出牌，且严禁打出刚吃进的牌！
+        cp.forbiddenDiscard = tile;
         showVFX('吃');
         Audio.playChi();
         scheduleSync();
@@ -653,6 +661,27 @@
     }
 
     return null;
+  }
+
+  /* 标记桌面上（弃牌池中）被吃/碰/杠走的牌为暗化状态 */
+  function markDiscardClaimed(discarderSeat, tile, claimType, claimerSeat) {
+    if (!S || !S.players) return;
+    var dp = S.players[discarderSeat];
+    if (!dp || !dp.discards || dp.discards.length === 0) return;
+    for (var i = dp.discards.length - 1; i >= 0; i--) {
+      var d = dp.discards[i];
+      var t = (typeof d === 'object' && d !== null) ? d.tile : d;
+      var alreadyClaimed = (typeof d === 'object' && d !== null) && d.claimed;
+      if (t === tile && !alreadyClaimed) {
+        dp.discards[i] = {
+          tile: tile,
+          claimed: true,
+          claimType: claimType,
+          by: claimerSeat
+        };
+        break;
+      }
+    }
   }
 
   function askClaim(seat, options, gen) {
@@ -1087,11 +1116,21 @@
 
       if (canHu || kongs.length > 0) {
         renderOwnTurnActionBar(actions);
+      } else {
+        if (p.forbiddenDiscard !== null && p.forbiddenDiscard !== undefined) {
+          showTurnPromptBanner('🔔 吃牌成功！请点击手牌打出一张牌 ⬆（禁打刚吃进的【' + Engine.tileName(p.forbiddenDiscard) + '】）');
+        } else if (p.justPeng) {
+          p.justPeng = false;
+          showTurnPromptBanner('🔔 碰牌成功！请点击手牌打出一张牌 ⬆');
+        } else {
+          showTurnPromptBanner('🔔 轮到您出牌，请点击手牌打出一张牌 ⬆');
+        }
       }
 
       S.pendingDiscardResolve = function(tile) {
         clearActionBar();
         hideTingTooltip();
+        hideTurnPromptBanner();
         S.pendingDiscardResolve = null;
         resolve({ type: 'discard', tile: tile });
       };
@@ -1106,7 +1145,13 @@
     if (kongs.length && S.wall.length > 0) {
       return { type: 'kong', kong: kongs[0] };
     }
-    return { type: 'discard', tile: Engine.aiChooseDiscard(p) };
+    var chosen = Engine.aiChooseDiscard(p);
+    // 机器人也严格遵守吃牌禁打同张规则
+    if (p.forbiddenDiscard !== null && p.forbiddenDiscard !== undefined && chosen === p.forbiddenDiscard) {
+      var altTiles = p.hand.filter(function(x) { return x !== p.forbiddenDiscard; });
+      if (altTiles.length > 0) chosen = altTiles[0];
+    }
+    return { type: 'discard', tile: chosen };
   }
 
   /* ================= Round End & Scoring ================= */
@@ -1237,7 +1282,10 @@
     for (var i = 0; i < 4; i++) {
       var pl = S.players[i];
       if (!pl) continue;
-      pl.discards.forEach(function(t) { counts[t] = (counts[t] || 0) + 1; });
+      pl.discards.forEach(function(d) {
+        var t = (typeof d === 'object' && d !== null) ? d.tile : d;
+        counts[t] = (counts[t] || 0) + 1;
+      });
       pl.melds.forEach(function(m) {
         m.tiles.forEach(function(t) { counts[t] = (counts[t] || 0) + 1; });
       });
@@ -1295,6 +1343,19 @@
     if (hintCard) hintCard.style.display = 'none';
   }
 
+  /* ================= Turn Prompt Banner ================= */
+  function showTurnPromptBanner(text) {
+    var el = document.getElementById('turnPromptBanner');
+    if (!el) return;
+    el.textContent = text;
+    el.style.display = 'flex';
+  }
+
+  function hideTurnPromptBanner() {
+    var el = document.getElementById('turnPromptBanner');
+    if (el) el.style.display = 'none';
+  }
+
   /* ================= Action Bar Rendering ================= */
   function renderActionBar(opts) {
     var bar = document.getElementById('actionBar');
@@ -1305,23 +1366,89 @@
       bar.appendChild(createActionBtn('胡', 'hu', function() { opts.onAction('hu'); }));
     }
     if (opts.canGang) {
-      bar.appendChild(createActionBtn('杠', 'gang', function() { opts.onAction('gang'); }));
+      bar.appendChild(createActionBtn('杠', 'gang', function() {
+        if (opts.canHu) {
+          showHuOrPengChoicePopup(opts, 'gang', function() { opts.onAction('gang'); });
+        } else {
+          opts.onAction('gang');
+        }
+      }));
     }
     if (opts.canPeng) {
-      bar.appendChild(createActionBtn('碰', 'peng', function() { opts.onAction('peng'); }));
+      bar.appendChild(createActionBtn('碰', 'peng', function() {
+        if (opts.canHu) {
+          // 能胡牌时若玩家点击碰牌，提供明确二选一，绝不误操作丢胡！
+          showHuOrPengChoicePopup(opts, 'peng', function() { opts.onAction('peng'); });
+        } else {
+          opts.onAction('peng');
+        }
+      }));
     }
     if (opts.canChi) {
       var options = Engine.findChiOptions(S.players[ME].hand, opts.tile);
       bar.appendChild(createActionBtn('吃', 'chi', function() {
-        if (options.length === 1) {
-          opts.onAction('chi', options[0]);
+        if (opts.canHu) {
+          showHuOrPengChoicePopup(opts, 'chi', function() {
+            if (options.length === 1) opts.onAction('chi', options[0]);
+            else showChiChoicePopup(options, opts.onAction);
+          });
         } else {
-          showChiChoicePopup(options, opts.onAction);
+          if (options.length === 1) {
+            opts.onAction('chi', options[0]);
+          } else {
+            showChiChoicePopup(options, opts.onAction);
+          }
         }
       }));
     }
 
-    bar.appendChild(createActionBtn('过', 'pass', function() { opts.onAction('pass'); }));
+    bar.appendChild(createActionBtn('过', 'pass', function() {
+      if (opts.canHu) {
+        showHuOrPengChoicePopup(opts, 'pass', function() { opts.onAction('pass'); });
+      } else {
+        opts.onAction('pass');
+      }
+    }));
+  }
+
+  /* 能胡时点击碰/吃/过的防误触二次确认与主动决策选择弹窗 */
+  function showHuOrPengChoicePopup(opts, actType, onConfirm) {
+    var modal = document.getElementById('choiceConfirmModal');
+    var titleEl = document.getElementById('choiceConfirmTitle');
+    var subEl = document.getElementById('choiceConfirmSub');
+    var btnHu = document.getElementById('choiceBtnHu');
+    var btnAlt = document.getElementById('choiceBtnAlt');
+    var btnCancel = document.getElementById('choiceBtnCancel');
+    if (!modal) {
+      onConfirm();
+      return;
+    }
+
+    var actName = (actType === 'peng' ? '碰牌' : (actType === 'gang' ? '杠牌' : (actType === 'chi' ? '吃牌' : '过牌')));
+    titleEl.textContent = '⚡ 雀仙提示：您当前可以直接【胡牌】胜出！';
+    if (actType === 'pass') {
+      subEl.textContent = '您当前手牌已可胡牌，刚才点击了【过牌】。确定要放弃本次胡牌机会吗？（过水后需等自己出牌后方可再次胡其他家）';
+      btnAlt.textContent = '⚠️ 确定过牌（放弃胡牌）';
+    } else {
+      subEl.textContent = '您当前手牌已可胡牌，刚才点击了【' + actName + '】。您希望立即胡牌胜出，还是确定放弃胡牌改选' + actName + '？（' + actName + '后必须打出一张手牌）';
+      btnAlt.textContent = (actType === 'peng' ? '✋ 确定碰牌并出牌' : (actType === 'gang' ? '🀄 确定杠牌' : '🥢 确定吃牌并出牌'));
+    }
+
+    modal.style.display = 'flex';
+
+    btnHu.onclick = function() {
+      modal.style.display = 'none';
+      opts.onAction('hu');
+    };
+
+    btnAlt.onclick = function() {
+      modal.style.display = 'none';
+      onConfirm();
+    };
+
+    btnCancel.onclick = function() {
+      modal.style.display = 'none';
+    };
   }
 
   function renderOwnTurnActionBar(opts) {
@@ -1439,9 +1566,23 @@
     if (!poolEl) return;
 
     var html = '';
-    discards.forEach(function(t, idx) {
+    discards.forEach(function(d, idx) {
+      var t = (typeof d === 'object' && d !== null) ? d.tile : d;
+      var isClaimed = (typeof d === 'object' && d !== null) && d.claimed;
+      var claimType = (isClaimed && d.claimType) ? d.claimType : '';
       var isLast = (S.lastDiscard && S.lastDiscard.tile === t && idx === discards.length - 1 && absSeatAt(pos) === S.lastDiscard.seat);
-      html += Engine.tileHTML(t, isLast ? 'last-discard' : '');
+
+      var extra = '';
+      if (isLast) extra += 'last-discard ';
+      if (isClaimed) extra += 'claimed-pool-tile ';
+
+      var tileStr = Engine.tileHTML(t, extra.trim());
+      if (isClaimed) {
+        var claimLabel = (claimType === 'peng' ? '碰' : (claimType === 'chi' ? '吃' : '杠'));
+        var badgeHtml = '<span class="claimed-badge">' + claimLabel + '</span>';
+        tileStr = tileStr.replace('</div></div>', badgeHtml + '</div></div>');
+      }
+      html += tileStr;
     });
     poolEl.innerHTML = html;
   }
@@ -1460,7 +1601,23 @@
     var meldsEl = document.getElementById('oppMelds_' + prefix);
     if (meldsEl) {
       var meldHTML = '';
-      (player.melds || []).forEach(function(m) {
+      var meldList = player.melds || [];
+      if (meldList.length > 0) {
+        var totalTiles = 0;
+        var pCount = 0, cCount = 0, gCount = 0;
+        meldList.forEach(function(m) {
+          totalTiles += m.tiles.length;
+          if (m.kind === 'pon') pCount++;
+          else if (m.kind === 'chi') cCount++;
+          else if (m.kind === 'kong') gCount++;
+        });
+        var summary = [];
+        if (pCount > 0) summary.push('碰×' + pCount);
+        if (cCount > 0) summary.push('吃×' + cCount);
+        if (gCount > 0) summary.push('杠×' + gCount);
+        meldHTML += '<span class="melds-counter-pill opp">' + summary.join(' ') + ' · 共' + totalTiles + '张</span>';
+      }
+      meldList.forEach(function(m) {
         meldHTML += '<div class="meld-group" style="display:flex;gap:1px;margin-right:4px;">';
         m.tiles.forEach(function(t) { meldHTML += Engine.tileHTML(t); });
         meldHTML += '</div>';
@@ -1485,10 +1642,12 @@
     player.hand.forEach(function(t, i) {
       var isSelected = (S.selectedHandIndex === i);
       var isDrawn = (player.lastDrawn === t && i === player.hand.length - 1);
-      var extra = (isSelected ? 'selected ' : '') + (isDrawn ? 'drawn-tile ' : '');
-      var pillHtml = (isSelected && S.current === ME && S.pendingDiscardResolve) ? '<div class="discard-tap-pill" data-discard="' + t + '">出牌 ⬆</div>' : '';
-      var tileStr = Engine.tileHTML(t, extra);
-      html += tileStr.replace('data-tile="', 'data-index="' + i + '" data-tile="').replace('</div></div>', pillHtml + '</div></div>');
+      var isForbidden = (player.forbiddenDiscard !== null && player.forbiddenDiscard !== undefined && t === player.forbiddenDiscard);
+      var extra = (isSelected ? 'selected ' : '') + (isDrawn ? 'drawn-tile ' : '') + (isForbidden ? 'forbidden-discard ' : '');
+      var pillHtml = (isSelected && S.current === ME && S.pendingDiscardResolve && !isForbidden) ? '<div class="discard-tap-pill" data-discard="' + t + '">出牌 ⬆</div>' : '';
+      var forbiddenBadge = isForbidden ? '<span class="forbidden-discard-badge">🚫禁打</span>' : '';
+      var tileStr = Engine.tileHTML(t, extra.trim());
+      html += tileStr.replace('data-tile="', 'data-index="' + i + '" data-tile="').replace('</div></div>', pillHtml + forbiddenBadge + '</div></div>');
     });
     handRow.innerHTML = html;
 
@@ -1514,6 +1673,10 @@
       pEl.addEventListener('click', function(e) {
         e.stopPropagation();
         var dt = parseInt(pEl.getAttribute('data-discard'), 10);
+        if (player.forbiddenDiscard !== null && player.forbiddenDiscard !== undefined && dt === player.forbiddenDiscard) {
+          showToast('⚠️ 吃牌禁打同张：本回合不能打出刚吃的【' + Engine.tileName(dt) + '】！');
+          return;
+        }
         if (S.pendingDiscardResolve) {
           var res = S.pendingDiscardResolve;
           S.selectedHandIndex = -1;
@@ -1529,7 +1692,23 @@
     var meldsEl = document.getElementById('humanMeldsArea');
     if (meldsEl) {
       var mHtml = '';
-      (player.melds || []).forEach(function(m) {
+      var meldList = player.melds || [];
+      if (meldList.length > 0) {
+        var totalTiles = 0;
+        var pCount = 0, cCount = 0, gCount = 0;
+        meldList.forEach(function(m) {
+          totalTiles += m.tiles.length;
+          if (m.kind === 'pon') pCount++;
+          else if (m.kind === 'chi') cCount++;
+          else if (m.kind === 'kong') gCount++;
+        });
+        var summary = [];
+        if (pCount > 0) summary.push('碰×' + pCount);
+        if (cCount > 0) summary.push('吃×' + cCount);
+        if (gCount > 0) summary.push('杠×' + gCount);
+        mHtml += '<span class="melds-counter-pill">' + summary.join(' ') + ' · 共' + totalTiles + '张</span>';
+      }
+      meldList.forEach(function(m) {
         mHtml += '<div class="meld-group" style="display:flex;gap:1px;margin-right:6px;">';
         m.tiles.forEach(function(t) { mHtml += Engine.tileHTML(t); });
         mHtml += '</div>';
@@ -1555,6 +1734,10 @@
 
     tileEl.addEventListener('touchstart', function(e) {
       if (S.current !== ME || !S.pendingDiscardResolve) return;
+      var mePlayer = S.players[ME];
+      if (mePlayer && mePlayer.forbiddenDiscard !== null && mePlayer.forbiddenDiscard !== undefined && tile === mePlayer.forbiddenDiscard) {
+        return;
+      }
       var touch = e.touches[0];
       startY = touch.clientY;
       startX = touch.clientX;
@@ -1579,6 +1762,11 @@
 
       // Dragged up by > 45px -> Discard immediately!
       if (deltaY < -45 && S.current === ME && S.pendingDiscardResolve) {
+        var mePlayer = S.players[ME];
+        if (mePlayer && mePlayer.forbiddenDiscard !== null && mePlayer.forbiddenDiscard !== undefined && tile === mePlayer.forbiddenDiscard) {
+          showToast('⚠️ 吃牌禁打同张：本回合不能打出刚吃的【' + Engine.tileName(tile) + '】！');
+          return;
+        }
         var resolve = S.pendingDiscardResolve;
         S.selectedHandIndex = -1;
         S.selectedTile = null;
@@ -1590,6 +1778,14 @@
   }
 
   function onHumanTileClick(t, i) {
+    var mePlayer = S.players[ME];
+    if (mePlayer && mePlayer.forbiddenDiscard !== null && mePlayer.forbiddenDiscard !== undefined && t === mePlayer.forbiddenDiscard) {
+      showToast('⚠️ 吃牌禁打同张：本回合不能打出刚吃的【' + Engine.tileName(t) + '】！请打出其他手牌');
+      highlightMatchingTiles(t);
+      Audio.playTileClick();
+      return;
+    }
+
     if (S.current !== ME || !S.pendingDiscardResolve) {
       highlightMatchingTiles(t);
       Audio.playTileClick();
