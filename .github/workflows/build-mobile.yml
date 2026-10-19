@@ -47,13 +47,13 @@ jobs:
       - name: Prepare Android APK Output
         run: |
           mkdir -p build-artifacts
-          cp android/app/build/outputs/apk/debug/app-debug.apk build-artifacts/Mahjong-v2.5.0.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk build-artifacts/Mahjong-v2.5.1.apk
 
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Mahjong-Android-APK
-          path: build-artifacts/Mahjong-v2.5.0.apk
+          path: build-artifacts/Mahjong-v2.5.1.apk
           if-no-files-found: error
 
   build-ios:
@@ -102,10 +102,10 @@ jobs:
             cd "$APP_DIR"
             mkdir -p Payload
             cp -r App.app Payload/
-            zip -qr Mahjong-iOS-v2.5.0.ipa Payload
+            zip -qr Mahjong-iOS-v2.5.1.ipa Payload
             zip -qr Mahjong-iOS-App.zip App.app
             cd -
-            cp "$APP_DIR/Mahjong-iOS-v2.5.0.ipa" build-artifacts/
+            cp "$APP_DIR/Mahjong-iOS-v2.5.1.ipa" build-artifacts/
             cp "$APP_DIR/Mahjong-iOS-App.zip" build-artifacts/
             ls -lh build-artifacts/
           else
@@ -118,7 +118,7 @@ jobs:
         with:
           name: Mahjong-iOS-IPA
           path: |
-            build-artifacts/Mahjong-iOS-v2.5.0.ipa
+            build-artifacts/Mahjong-iOS-v2.5.1.ipa
             build-artifacts/Mahjong-iOS-App.zip
           if-no-files-found: error
 
@@ -147,24 +147,34 @@ jobs:
       - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v2.5.0
-          name: "打麻将 Mahjong v2.5.0 (Android APK & iOS IPA)"
+          tag_name: v2.5.1
+          name: "打麻将 Mahjong v2.5.1 (iOS & Android & Web)"
           body: |
-            ### 🀄 打麻将 (Mahjong Master) 移动端官方安装包 v2.5.0
+            ### 🀄 打麻将 (Mahjong Master) 全平台最新官方版本 v2.5.1
             
-            云端 GitHub Actions 全自动多平台编译产物 (macOS-14 Xcode + Ubuntu Android SDK)：
+            云端 GitHub Actions 全自动多平台编译产物 (macOS-14 Apple Silicon Xcode + Ubuntu Android SDK)：
 
             #### 📦 下载文件 (Direct Downloads):
-            - **Android 安装包**: [`Mahjong-v2.5.0.apk`](https://github.com/qingtian6325-lang/mahjong/releases/download/v2.5.0/Mahjong-v2.5.0.apk) (支持 Android 8.0 ~ Android 15，直接下载即可安装)
-            - **iOS 安装包 (IPA)**: [`Mahjong-iOS-v2.5.0.ipa`](https://github.com/qingtian6325-lang/mahjong/releases/download/v2.5.0/Mahjong-iOS-v2.5.0.ipa) (支持 TrollStore / AltStore / Sideloadly / 巨魔 / 证书自签名安装)
-            - **iOS 开发者免签包**: [`Mahjong-iOS-App.zip`](https://github.com/qingtian6325-lang/mahjong/releases/download/v2.5.0/Mahjong-iOS-App.zip)
+            - **Android 安装包**: [`Mahjong-v2.5.1.apk`](https://github.com/qingtian6325-lang/mahjong/releases/download/v2.5.1/Mahjong-v2.5.1.apk) (支持 Android 8.0 ~ Android 15，极速下载直接安装)
+            - **iOS 安装包 (IPA)**: [`Mahjong-iOS-v2.5.1.ipa`](https://github.com/qingtian6325-lang/mahjong/releases/download/v2.5.1/Mahjong-iOS-v2.5.1.ipa) (支持 TrollStore / AltStore / Sideloadly / 巨魔 / 证书自签名安装)
+            - **iOS 开发者免签包**: [`Mahjong-iOS-App.zip`](https://github.com/qingtian6325-lang/mahjong/releases/download/v2.5.1/Mahjong-iOS-App.zip)
+            - **Web 在线畅玩**: [https://qingtian6325-lang.github.io/mahjong/](https://qingtian6325-lang.github.io/mahjong/) (支持 Safari / Chrome 一键【添加到主屏幕】作为原生 PWA 使用)
 
-            #### ✨ 本版本核心功能与优化:
-            1. **正宗传统骨瓷雕刻麻将牌**: 全套148张麻将牌（筒/条/万/字/花）采用矢量重绘，还原实物温润质感与传统书法。
-            2. **断线重连系统**: 支持房间状态云端恢复，网络中断或误刷新自动重连。
-            3. **对局模式选择**: 进入游戏自由选择单人练习或多人对战。
-            4. **60秒思考倒计时 & 机器人出牌气泡提示**: 节奏舒缓，清晰直观。
-            5. **五声音阶背景音乐 & 丰富牌局音效**。
+            #### ✨ v2.5.1 核心重大升级:
+            1. **🗣️ 全真普通话语音报牌与音效**:
+               - 出牌报牌：打出任何牌自动真人语音报出牌名（如「二条」、「五万」、「红中」），四位玩家各分配独立角色音色与音调。
+               - 动作呐喊：吃、碰、杠、胡、自摸、花杠即刻激情发声！
+               - 快捷短句：局内预设常用短句（「快点出牌啊，花儿都谢了！」「这把我要自摸，通通给钱～」等）全部支持真人语音朗读！
+            2. **🀄 规则裁决与防丢胡保障**:
+               - 胡牌最大：胡 ＞ 杠 ＞ 碰 ＞ 吃 严格仲裁。
+               - 胡牌/碰牌选择弹窗：能胡牌时点击碰牌会弹出确认提示，防止误碰丢失胡牌。
+               - 吃碰必须打牌与吃牌禁打同张规则：吃牌后本轮不可立即打出同面牌（标记「🚫禁打」并暗化拦截）。
+            3. **🎯 牌桌视觉与记牌辅助**:
+               - 弃牌池中被碰/吃/杠走的牌自动变暗并打上角标，直观辨识剩余张数。
+               - 吃碰副露区显示张数统计胶囊（如「碰×1 吃×1 · 共6张」）。
+            4. **🔄 Web & PWA 强力更新机制**:
+               - 设置面板新增【🔄 强制刷新最新版】按钮，一键清空旧版 Service Worker 与缓存并重新载入最新版本。
+            5. **🎨 正宗经典国风骨瓷麻将牌面 & 60秒思考倒计时 & 断线重连恢复**。
           files: |
             dist/*
         continue-on-error: true

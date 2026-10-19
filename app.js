@@ -2088,6 +2088,33 @@
       });
     }
 
+    // Force Update & Wipe Cache Button (解决iOS/Android/Web浏览器旧版本缓存问题)
+    var btnForceUpdate = document.getElementById('btnForceUpdateApp');
+    if (btnForceUpdate) {
+      btnForceUpdate.addEventListener('click', async function() {
+        btnForceUpdate.disabled = true;
+        btnForceUpdate.textContent = '⏳ 正在更新...';
+        showToast('🔄 正在清除旧缓存并更新至 v2.5.1...');
+        try {
+          if ('serviceWorker' in navigator) {
+            var regs = await navigator.serviceWorker.getRegistrations();
+            for (var r of regs) {
+              await r.unregister();
+            }
+          }
+          if ('caches' in window) {
+            var keys = await caches.keys();
+            for (var k of keys) {
+              await caches.delete(k);
+            }
+          }
+        } catch (e) {}
+        setTimeout(function() {
+          window.location.href = window.location.pathname + '?update=' + Date.now();
+        }, 300);
+      });
+    }
+
     // BGM (Background Music) Controls
     var btnBgm = document.getElementById('btnBgmToggle');
     var btnSettingsBgm = document.getElementById('btnSettingsBgmToggle');

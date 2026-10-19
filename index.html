@@ -14,7 +14,7 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   <title>麻将大师 · 豪华翡翠雀台</title>
-  <link rel="stylesheet" href="./style.css?v=2.5.0" />
+  <link rel="stylesheet" href="./style.css?v=2.5.1" />
 </head>
 <body>
   <!-- Mobile Portrait Orientation Notice -->
@@ -496,6 +496,14 @@
             <span style="font-size:13px;color:var(--text-muted);width:80px;">音乐音量</span>
             <input type="range" id="sliderBgmVolume" min="0" max="1" step="0.05" value="0.35" style="flex:1;accent-color:var(--gold);" />
           </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid rgba(212,175,55,0.2);">
+            <div>
+              <div style="font-size:13px;font-weight:bold;color:var(--gold-light);">版本更新 (v2.5.1)</div>
+              <div style="font-size:11px;color:var(--text-muted);">一键清除旧缓存并拉取最新全套代码</div>
+            </div>
+            <button class="tb-btn" id="btnForceUpdateApp" style="padding:6px 14px;background:rgba(212,175,55,0.2);border-color:var(--gold);color:#ffd700;">🔄 强制刷新最新版</button>
+          </div>
         </div>
 
         <button class="primary-btn modal-close-action" style="margin-top:6px;">完成</button>
@@ -506,21 +514,24 @@
   <!-- Supabase Realtime SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Game Scripts -->
-  <script src="./audio.js?v=2.5.0"></script>
-  <script src="./engine.js?v=2.5.0"></script>
-  <script src="./network.js?v=2.5.0"></script>
-  <script src="./qr.js?v=2.5.0"></script>
-  <script src="./app.js?v=2.5.0"></script>
+  <script src="./audio.js?v=2.5.1"></script>
+  <script src="./engine.js?v=2.5.1"></script>
+  <script src="./network.js?v=2.5.1"></script>
+  <script src="./qr.js?v=2.5.1"></script>
+  <script src="./app.js?v=2.5.1"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=2.5.0').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=2.5.1').then(function(reg) {
           reg.update();
         }).catch(function(e) {
           console.log('SW register failed: ', e);
         });
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', function() {
+        window.location.reload();
       });
     }
   </script>
