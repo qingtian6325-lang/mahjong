@@ -3,7 +3,11 @@ name: Build Mobile Apps (APK & iOS)
 on:
   push:
     branches: [ main ]
+    tags: [ 'v*' ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build-android:
@@ -26,11 +30,11 @@ jobs:
           java-version: '21'
 
       - name: Install Dependencies
-        run: npm ci || npm install
+        run: npm install
 
       - name: Build Web Assets & Sync Capacitor
         run: |
-          npm run build
+          node build.js
           npx cap sync android
 
       - name: Build Android Debug APK
@@ -39,15 +43,20 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug
 
+      - name: Prepare Android APK Output
+        run: |
+          mkdir -p build-artifacts
+          cp android/app/build/outputs/apk/debug/app-debug.apk build-artifacts/Mahjong-v2.5.0.apk
+
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Mahjong-Android-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: build-artifacts/Mahjong-v2.5.0.apk
           if-no-files-found: error
 
   build-ios:
-    name: Build iOS App Workspace
+    name: Build iOS App Workspace & IPA
     runs-on: macos-14
     steps:
       - name: Checkout Repository
@@ -60,42 +69,101 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci || npm install
+        run: npm install
 
       - name: Build Web Assets & Sync Capacitor
         run: |
-          npm run build
+          node build.js
           npx cap sync ios
 
-      - name: Build iOS Xcode Archive
+      - name: Build iOS Xcode App
         run: |
           cd ios/App
-          if [ -d "App.xcworkspace" ]; then
-            xcodebuild -workspace App.xcworkspace \
-              -scheme App \
-              -configuration Debug \
-              -destination 'generic/platform=iOS' \
-              -derivedDataPath build \
-              CODE_SIGNING_ALLOWED=NO \
-              build
+          xcodebuild -project App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            build
+
+      - name: Package iOS IPA & App Zip
+        run: |
+          mkdir -p build-artifacts
+          APP_PATH=$(find ios/App/build -name "App.app" -type d | head -n 1)
+          if [ -n "$APP_PATH" ] && [ -d "$APP_PATH" ]; then
+            echo "Found compiled iOS app at: $APP_PATH"
+            APP_DIR=$(dirname "$APP_PATH")
+            cd "$APP_DIR"
+            mkdir -p Payload
+            cp -r App.app Payload/
+            zip -qr Mahjong-iOS-v2.5.0.ipa Payload
+            zip -qr Mahjong-iOS-App.zip App.app
+            cd -
+            cp "$APP_DIR/Mahjong-iOS-v2.5.0.ipa" build-artifacts/
+            cp "$APP_DIR/Mahjong-iOS-App.zip" build-artifacts/
+            ls -lh build-artifacts/
           else
-            xcodebuild -project App.xcodeproj \
-              -scheme App \
-              -configuration Debug \
-              -destination 'generic/platform=iOS' \
-              -derivedDataPath build \
-              CODE_SIGNING_ALLOWED=NO \
-              build
+            echo "::error::App.app not found in build directory!"
+            exit 1
           fi
 
-      - name: Zip iOS Build Artifact
-        run: |
-          cd ios/App/build/Build/Products/Debug-iphoneos
-          zip -r Mahjong-iOS-App.zip App.app
-
-      - name: Upload iOS App Artifact
+      - name: Upload iOS App Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Mahjong-iOS-App
-          path: ios/App/build/Build/Products/Debug-iphoneos/Mahjong-iOS-App.zip
-          if-no-files-found: warn
+          name: Mahjong-iOS-IPA
+          path: |
+            build-artifacts/Mahjong-iOS-v2.5.0.ipa
+            build-artifacts/Mahjong-iOS-App.zip
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish Mobile Release (APK & IPA)
+    needs: [build-android, build-ios]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Android Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Mahjong-Android-APK
+          path: dist
+
+      - name: Download iOS Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: Mahjong-iOS-IPA
+          path: dist
+
+      - name: List Release Files
+        run: ls -la dist/
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v2.5.0
+          name: "打麻将 Mahjong v2.5.0 (Android APK & iOS IPA)"
+          body: |
+            ### 🀄 打麻将 (Mahjong Master) 移动端官方安装包 v2.5.0
+            
+            云端 GitHub Actions 全自动多平台编译产物 (macOS-14 Xcode + Ubuntu Android SDK)：
+
+            #### 📦 下载文件 (Direct Downloads):
+            - **Android 安装包**: [`Mahjong-v2.5.0.apk`](https://github.com/qingtian6325-lang/mahjong/releases/download/v2.5.0/Mahjong-v2.5.0.apk) (支持 Android 8.0 ~ Android 15，直接下载即可安装)
+            - **iOS 安装包 (IPA)**: [`Mahjong-iOS-v2.5.0.ipa`](https://github.com/qingtian6325-lang/mahjong/releases/download/v2.5.0/Mahjong-iOS-v2.5.0.ipa) (支持 TrollStore / AltStore / Sideloadly / 巨魔 / 证书自签名安装)
+            - **iOS 开发者免签包**: [`Mahjong-iOS-App.zip`](https://github.com/qingtian6325-lang/mahjong/releases/download/v2.5.0/Mahjong-iOS-App.zip)
+
+            #### ✨ 本版本核心功能与优化:
+            1. **正宗传统骨瓷雕刻麻将牌**: 全套148张麻将牌（筒/条/万/字/花）采用矢量重绘，还原实物温润质感与传统书法。
+            2. **断线重连系统**: 支持房间状态云端恢复，网络中断或误刷新自动重连。
+            3. **对局模式选择**: 进入游戏自由选择单人练习或多人对战。
+            4. **60秒思考倒计时 & 机器人出牌气泡提示**: 节奏舒缓，清晰直观。
+            5. **五声音阶背景音乐 & 丰富牌局音效**。
+          files: |
+            dist/*
+        continue-on-error: true
