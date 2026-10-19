@@ -24,7 +24,8 @@
 
   var S = null; // Local game state
   var timerInterval = null;
-  var timerRemaining = 15;
+  var TURN_TIME_LIMIT = 60; // 60s (1 minute) thinking time
+  var timerRemaining = TURN_TIME_LIMIT;
 
   // Host-side pending waits for remote guests
   var hostPending = {};
@@ -210,10 +211,10 @@
 
     // 1. Draw Phase
     if (skip === 'kong') {
-      await sleep(p.isBot ? 800 : 80);
+      await sleep(p.isBot ? 1000 : 80);
       if (drawTile(pIdx, true) === null) { endRoundDraw(); return { end: true }; }
     } else if (!skip) {
-      await sleep(p.isBot ? 800 : 80);
+      await sleep(p.isBot ? 1000 : 80);
       if (drawTile(pIdx, false) === null) { endRoundDraw(); return { end: true }; }
     }
     render();
@@ -229,8 +230,8 @@
       } else if (p.ctrl === 'remote' && MODE === 'host') {
         discardResult = await remoteDiscardWait(pIdx, gen);
       } else {
-        // Bot turn
-        await sleep(750);
+        // Bot turn: realistic human-like thinking delay
+        await sleep(1200);
         discardResult = botTurnDecision(p);
       }
 
@@ -263,10 +264,21 @@
     render();
     scheduleSync();
 
+    // If a bot discarded, give human player clear announcement and 1.6s to observe the tile
+    if (p.isBot) {
+      showSpeechBubble(pIdx, '打出 ' + Engine.tileName(dTile));
+      showToast(p.name + ' 打出【' + Engine.tileName(dTile) + '】');
+      await sleep(1600);
+    }
+
     // 4. Claims from other players (吃 / 碰 / 杠 / 胡)
     var claimRes = await processClaims(pIdx, dTile, gen);
     if (gen !== S.gen || S.over) return { end: true };
     if (claimRes) return claimRes;
+
+    if (p.isBot) {
+      await sleep(300);
+    }
 
     return { next: (pIdx + 1) % 4, skip: false };
   }
@@ -511,14 +523,14 @@
         resend: null
       };
 
-      // Fallback timer: 25s for timeout -> bot takeover
+      // Fallback timer: 65s for timeout -> bot takeover
       pending.timer = setTimeout(function() {
         if (hostPending[seat] === pending) {
           clearHostPending(seat);
           showToast(p.name + ' 超时，由机器人代打出牌');
           resolve(botTurnDecision(p));
         }
-      }, p.online ? 25000 : 8000);
+      }, p.online ? 65000 : 8000);
 
       // Resend every 3.5s in case packets are dropped
       pending.resend = setInterval(function() {
@@ -572,7 +584,7 @@
           clearHostPending(seat);
           resolve({ act: 'pass', couldHu: options.canHu });
         }
-      }, p.online ? 16000 : 6000);
+      }, p.online ? 25000 : 6000);
 
       pending.resend = setInterval(function() {
         if (!hostPending[seat] || hostPending[seat] !== pending) {
@@ -944,10 +956,10 @@
     }, 1200);
   }
 
-  /* ================= 15s Turn Timer ================= */
+  /* ================= 60s (1 Minute) Turn Timer ================= */
   function startTurnTimer(seat) {
     stopTurnTimer();
-    timerRemaining = 15;
+    timerRemaining = TURN_TIME_LIMIT;
     updateTimerUI(timerRemaining);
 
     timerInterval = setInterval(function() {
@@ -957,7 +969,7 @@
         onTimerExpire(seat);
       } else {
         updateTimerUI(timerRemaining);
-        if (timerRemaining <= 5 && seat === ME) {
+        if (timerRemaining <= 8 && seat === ME) {
           Audio.playTick();
         }
       }
@@ -978,13 +990,13 @@
 
     numEl.textContent = sec;
     var totalCircumference = 314;
-    var offset = totalCircumference * (1 - sec / 15);
+    var offset = totalCircumference * (1 - sec / TURN_TIME_LIMIT);
     ringEl.style.strokeDashoffset = offset;
 
-    if (sec <= 4) {
+    if (sec <= 8) {
       numEl.className = 'timer-number urgent';
       ringEl.setAttribute('class', 'timer-ring-progress urgent');
-    } else if (sec <= 8) {
+    } else if (sec <= 15) {
       numEl.className = 'timer-number';
       ringEl.setAttribute('class', 'timer-ring-progress warning');
     } else {

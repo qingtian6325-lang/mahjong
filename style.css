@@ -400,25 +400,28 @@ html, body {
 
 /* Highlighting recently discarded tile */
 .mj-tile.last-discard {
-  animation: lastDiscardPulse 1.2s infinite alternate;
+  animation: lastDiscardPulse 0.9s infinite alternate;
+  box-shadow: 0 0 0 2px #ffd700, 0 0 14px rgba(255, 215, 0, 0.9) !important;
+  transform: translateY(-2px) scale(1.08) !important;
+  z-index: 20 !important;
 }
 
 .mj-tile.last-discard::after {
   content: '';
   position: absolute;
-  top: -4px;
+  top: -5px;
   left: 50%;
   transform: translateX(-50%);
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: #ff4757;
-  box-shadow: 0 0 8px #ff4757;
+  background: #ff3838;
+  box-shadow: 0 0 10px #ff3838, 0 0 4px #ffffff;
 }
 
 @keyframes lastDiscardPulse {
-  from { filter: drop-shadow(0 0 2px rgba(255, 215, 0, 0.5)); }
-  to { filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.95)); }
+  from { filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.6)); }
+  to { filter: drop-shadow(0 0 12px rgba(255, 215, 0, 1)); }
 }
 
 /* Highlighting matching identical tiles on the table */
@@ -1051,6 +1054,54 @@ html, body {
   position: absolute;
   border-width: 6px;
   border-style: solid;
+}
+
+.seat-container-top .speech-bubble {
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+}
+.seat-container-top .speech-bubble::after {
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-color: transparent transparent #ffffff transparent;
+}
+
+.seat-container-left .speech-bubble {
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%) translateX(8px);
+}
+.seat-container-left .speech-bubble::after {
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border-color: transparent #ffffff transparent transparent;
+}
+
+.seat-container-right .speech-bubble {
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%) translateX(-8px);
+}
+.seat-container-right .speech-bubble::after {
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border-color: transparent transparent transparent #ffffff;
+}
+
+.seat-container-bottom .speech-bubble {
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+}
+.seat-container-bottom .speech-bubble::after {
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-color: #ffffff transparent transparent transparent;
 }
 
 @keyframes bubblePop {
