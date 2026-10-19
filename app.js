@@ -586,7 +586,11 @@
     var answers = await Promise.all(promises);
     if (gen !== S.gen || S.over) return null;
 
-    // Priority 1: Hu (胡)
+    // =========================================================================
+    // 动作仲裁优先级规则：胡最大 ＞ 杠 ＞ 碰 ＞ 吃
+    // =========================================================================
+
+    // 优先级 1: 胡 (Hu) —— 最高裁决权，胡牌胜出（截胡/一炮双响）
     for (var h = 0; h < answers.length; h++) {
       if (answers[h].act === 'hu') {
         endRoundWin(responders[h], discarder, false);
@@ -594,29 +598,36 @@
       }
     }
 
-    // Priority 2: Kong (杠) or Peng (碰)
-    for (var kp = 0; kp < answers.length; kp++) {
-      var ans = answers[kp];
-      var s = responders[kp];
-      var pObj = S.players[s];
-
-      if (ans.act === 'gang') {
-        removeFromHand(pObj, tile, 3);
-        pObj.melds.push({ kind: 'kong', tiles: [tile, tile, tile, tile], from: discarder });
-        settleInstant(s, 2, '明杠');
+    // 优先级 2: 杠 (Gang) —— 次高裁决权，优先于碰与吃
+    for (var g = 0; g < answers.length; g++) {
+      if (answers[g].act === 'gang') {
+        var gs = responders[g];
+        var gp = S.players[gs];
+        removeFromHand(gp, tile, 3);
+        gp.melds.push({ kind: 'kong', tiles: [tile, tile, tile, tile], from: discarder });
+        settleInstant(gs, 2, '明杠');
+        showVFX('杠');
+        Audio.playGang();
         scheduleSync();
-        return { next: s, skip: 'kong' };
-      } else if (ans.act === 'peng') {
-        removeFromHand(pObj, tile, 2);
-        pObj.melds.push({ kind: 'pon', tiles: [tile, tile, tile], from: discarder });
-        showVFX('碰');
-        Audio.playPeng();
-        scheduleSync();
-        return { next: s, skip: true };
+        return { next: gs, skip: 'kong' };
       }
     }
 
-    // Priority 3: Chi (吃)
+    // 优先级 3: 碰 (Peng) —— 优先于吃
+    for (var p = 0; p < answers.length; p++) {
+      if (answers[p].act === 'peng') {
+        var ps = responders[p];
+        var pp = S.players[ps];
+        removeFromHand(pp, tile, 2);
+        pp.melds.push({ kind: 'pon', tiles: [tile, tile, tile], from: discarder });
+        showVFX('碰');
+        Audio.playPeng();
+        scheduleSync();
+        return { next: ps, skip: true };
+      }
+    }
+
+    // 优先级 4: 吃 (Chi) —— 最低裁决权（仅下家，且其余三家均无人胡、杠、碰时方可吃牌）
     for (var c = 0; c < answers.length; c++) {
       if (answers[c].act === 'chi' && answers[c].meld) {
         var cs = responders[c];
@@ -634,10 +645,10 @@
       }
     }
 
-    // Over-water recording if passed on Hu
-    for (var p = 0; p < answers.length; p++) {
-      if (answers[p].couldHu && answers[p].act === 'pass') {
-        S.players[responders[p]].guoshui = true;
+    // 优先级 5: 全部弃权 / 过水记录（若可胡但点了过，记入过水状态）
+    for (var qs = 0; qs < answers.length; qs++) {
+      if (answers[qs].couldHu && answers[qs].act === 'pass') {
+        S.players[responders[qs]].guoshui = true;
       }
     }
 
@@ -649,10 +660,23 @@
     if (p.isBot) {
       return new Promise(function(resolve) {
         setTimeout(function() {
-          if (options.canHu) resolve({ act: 'hu' });
-          else if (options.canGang && Math.random() < 0.8) resolve({ act: 'gang' });
-          else if (options.canPeng && Math.random() < 0.6) resolve({ act: 'peng' });
-          else resolve({ act: 'pass', couldHu: options.canHu });
+          // 机器人选择逻辑同样严格遵循：胡 > 杠 > 碰 > 吃 > 过
+          if (options.canHu) {
+            resolve({ act: 'hu' });
+          } else if (options.canGang && Math.random() < 0.85) {
+            resolve({ act: 'gang' });
+          } else if (options.canPeng && Math.random() < 0.65) {
+            resolve({ act: 'peng' });
+          } else if (options.canChi && Math.random() < 0.5) {
+            var chiOpts = Engine.findChiOptions(p.hand, options.tile);
+            if (chiOpts.length > 0) {
+              resolve({ act: 'chi', meld: chiOpts[0] });
+            } else {
+              resolve({ act: 'pass', couldHu: options.canHu });
+            }
+          } else {
+            resolve({ act: 'pass', couldHu: options.canHu });
+          }
         }, 500);
       });
     }

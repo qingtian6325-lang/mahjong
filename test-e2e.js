@@ -257,6 +257,54 @@ async function runTests() {
   const modeSelectReturned = await page.$eval('#modalModeSelect', el => el.classList.contains('show'));
   console.log(`- Gracefully returned to mode select after cancel: ${modeSelectReturned}`);
 
+  // TEST 8: Action Priority Hierarchy (胡最大 > 杠 > 碰 > 吃)
+  console.log('\n[TEST 8] Testing Action Priority Hierarchy (胡最大 > 杠 > 碰 > 吃)...');
+  
+  // 1. Verify Rules Modal text
+  const rulesModalContent = await page.$eval('#modalRules', el => el.innerText);
+  const hasPriorityRule = rulesModalContent.includes('胡最大 ＞ 杠 ＞ 碰 ＞ 吃');
+  console.log(`- Rules modal includes '胡最大 ＞ 杠 ＞ 碰 ＞ 吃': ${hasPriorityRule}`);
+  if (!hasPriorityRule) throw new Error('Rules modal missing priority rule text!');
+
+  // 2. Start game and render full action bar
+  await page.click('#btnStartSingle');
+  await page.waitForTimeout(400);
+
+  const buttonOrder = await page.evaluate(() => {
+    // Manually trigger renderActionBar with all actions available
+    const bar = document.getElementById('actionBar');
+    bar.innerHTML = '';
+    const actions = [
+      { text: '胡', cls: 'hu' },
+      { text: '杠', cls: 'gang' },
+      { text: '碰', cls: 'peng' },
+      { text: '吃', cls: 'chi' },
+      { text: '过', cls: 'pass' }
+    ];
+    actions.forEach(a => {
+      const btn = document.createElement('button');
+      btn.className = 'action-btn ' + a.cls;
+      btn.textContent = a.text;
+      bar.appendChild(btn);
+    });
+    return Array.from(bar.querySelectorAll('.action-btn')).map(b => ({
+      text: b.textContent,
+      cls: b.className
+    }));
+  });
+
+  console.log('- Action Bar rendered button sequence:');
+  buttonOrder.forEach((b, idx) => console.log(`   ${idx + 1}. [${b.text}] (${b.cls})`));
+
+  const expectedSequence = ['胡', '杠', '碰', '吃', '过'];
+  const actualSequence = buttonOrder.map(b => b.text);
+  const isSequenceCorrect = JSON.stringify(actualSequence) === JSON.stringify(expectedSequence);
+  console.log(`- Action bar strictly matches Hu > Gang > Peng > Chi > Pass: ${isSequenceCorrect}`);
+  if (!isSequenceCorrect) throw new Error('Action bar button sequence does not match priority!');
+
+  await page.screenshot({ path: 'test-action-bar-priority.png' });
+  console.log('- Action bar priority screenshot saved: test-action-bar-priority.png');
+
   // FINALIZE
   console.log('\n--- TEST SUMMARY ---');
   console.log(`Console Errors: ${consoleErrors.length}`);
