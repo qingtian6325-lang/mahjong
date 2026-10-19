@@ -30,7 +30,9 @@
       </div>
       <div class="toolbar-actions">
         <button class="tb-btn active" id="btnLobby">🌐 联机对战</button>
+        <button class="tb-btn" id="btnHistory">📊 战绩</button>
         <button class="tb-btn" id="btnRules">📜 规则</button>
+        <button class="tb-btn" id="btnSettings">⚙️ 设置</button>
         <button class="tb-btn" id="btnSoundToggle">🔊 音效</button>
         <button class="tb-btn" id="btnStartNew">🔄 新局</button>
         <button class="tb-btn" id="btnLeaveRoom" style="display:none;background:rgba(231,76,60,0.2);border-color:#e74c3c;color:#ff9999;">🚪 离开房间</button>
@@ -282,6 +284,62 @@
           <button class="ghost-btn modal-close-action" style="flex:1;">查看牌桌</button>
           <button class="primary-btn orange" id="btnSettleNext" style="flex:2;">下一局 ➡️</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Modal: History / Scoreboard Ledger -->
+    <div class="modal-overlay" id="modalHistory">
+      <div class="modal-card" style="max-width:560px;">
+        <button class="close-btn">✕</button>
+        <div class="modal-title">📊 记分板 · 战绩明细</div>
+        <div class="modal-sub">记录每局胡牌、点炮、暗杠、花杠得分与累计总分</div>
+        <div class="history-table-wrap">
+          <table class="history-table">
+            <thead>
+              <tr id="historyTableHead">
+                <th>对局</th>
+                <th>事件</th>
+                <th>自己</th>
+                <th>下家</th>
+                <th>对家</th>
+                <th>上家</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody">
+              <tr><td colspan="6" style="color:var(--text-muted);padding:16px;">暂无历史对局记录</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <button class="primary-btn modal-close-action" style="margin-top:8px;">关闭</button>
+      </div>
+    </div>
+
+    <!-- Modal: Settings & Theme -->
+    <div class="modal-overlay" id="modalSettings">
+      <div class="modal-card" style="max-width:440px;">
+        <button class="close-btn">✕</button>
+        <div class="modal-title">⚙️ 游戏设置</div>
+        <div class="modal-sub">个性化牌桌风格与偏好</div>
+
+        <div style="display:flex;flex-direction:column;gap:14px;margin:10px 0;">
+          <div>
+            <div style="font-size:13px;font-weight:bold;color:var(--gold-light);margin-bottom:8px;">牌桌呢绒主题</div>
+            <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:8px;">
+              <button class="primary-btn theme-choice-btn active" data-theme="emerald" style="padding:10px 6px;font-size:13px;background:linear-gradient(135deg, #167043, #0a3d24);border-color:#2ecc71;">翡翠雀绿</button>
+              <button class="primary-btn theme-choice-btn" data-theme="obsidian" style="padding:10px 6px;font-size:13px;background:linear-gradient(135deg, #2c3640, #151a1f);border-color:#7f8c8d;">曜石黑金</button>
+              <button class="primary-btn theme-choice-btn" data-theme="crimson" style="padding:10px 6px;font-size:13px;background:linear-gradient(135deg, #7d2626, #421010);border-color:#e74c3c;">朱砂吉庆</button>
+            </div>
+          </div>
+
+          <hr style="border:none;border-top:1px solid rgba(212,175,55,0.2);" />
+
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:14px;">游戏音效</span>
+            <button class="tb-btn" id="btnSettingsSoundToggle" style="padding:6px 16px;">🔊 开启</button>
+          </div>
+        </div>
+
+        <button class="primary-btn modal-close-action" style="margin-top:6px;">完成</button>
       </div>
     </div>
   </div>

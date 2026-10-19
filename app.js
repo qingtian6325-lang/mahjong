@@ -1155,10 +1155,13 @@
     // 1. Center Compass & Wall
     document.getElementById('wallCountBadge').textContent = '余 ' + (S.wall ? S.wall.length : 0) + ' 张';
     var winds = ['bottom', 'right', 'top', 'left'];
+    var windChars = ['东', '南', '西', '北'];
     winds.forEach(function(posClass, i) {
       var el = document.getElementById('windMarker' + i);
       if (el) {
         var windSeat = absSeatAt(i);
+        var windIdx = (windSeat - (S ? S.dealer : 0) + 4) % 4;
+        el.textContent = windChars[windIdx];
         el.className = 'wind-marker ' + posClass + (windSeat === S.current ? ' active-turn' : '');
       }
     });
@@ -1250,7 +1253,9 @@
       var isSelected = (S.selectedTile === t);
       var isDrawn = (player.lastDrawn === t && i === player.hand.length - 1);
       var extra = (isSelected ? 'selected ' : '') + (isDrawn ? 'drawn-tile ' : '');
-      html += Engine.tileHTML(t, extra);
+      var pillHtml = (isSelected && S.current === ME && S.pendingDiscardResolve) ? '<div class="discard-tap-pill" data-discard="' + t + '">出牌 ⬆</div>' : '';
+      var tileStr = Engine.tileHTML(t, extra);
+      html += tileStr.replace('</div></div>', pillHtml + '</div></div>');
     });
     handRow.innerHTML = html;
 
@@ -1265,8 +1270,24 @@
         onHumanTileClick(t);
       });
 
-      // Mobile Touch drag-to-discard (触屏滑动手牌出牌)
+      // Mobile Touch drag-to-discard
       attachDragToDiscard(el, t);
+    });
+
+    // Attach discard pill click
+    var pills = handRow.querySelectorAll('.discard-tap-pill');
+    pills.forEach(function(pEl) {
+      pEl.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var dt = parseInt(pEl.getAttribute('data-discard'), 10);
+        if (S.pendingDiscardResolve) {
+          var res = S.pendingDiscardResolve;
+          S.selectedTile = null;
+          hideTingTooltip();
+          clearHighlightMatchingTiles();
+          res(dt);
+        }
+      });
     });
 
     // Human Melds
@@ -1473,8 +1494,59 @@
     return new Promise(function(resolve) { setTimeout(resolve, ms); });
   }
 
+  /* ================= History Scoreboard Table ================= */
+  function renderHistoryTable() {
+    var tbody = document.getElementById('historyTableBody');
+    if (!tbody || !S) return;
+    if (!S.history || S.history.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text-muted);padding:16px;">暂无历史对局记录</td></tr>';
+      return;
+    }
+
+    var html = '';
+    S.history.forEach(function(item) {
+      html += '<tr>' +
+        '<td>第 ' + item.round + ' 局</td>' +
+        '<td style="text-align:left;font-weight:bold;">' + item.label + '</td>';
+      for (var s = 0; s < 4; s++) {
+        var d = item.deltas ? item.deltas[s] : 0;
+        var dStr = (d > 0 ? '+' + d : String(d));
+        var col = (d > 0 ? '#2ecc71' : (d < 0 ? '#e74c3c' : 'var(--text-muted)'));
+        html += '<td style="color:' + col + ';font-weight:bold;">' + dStr + '</td>';
+      }
+      html += '</tr>';
+    });
+
+    // Summary row
+    html += '<tr style="background:rgba(212,175,55,0.18);font-weight:bold;">' +
+      '<td colspan="2">当前总分</td>';
+    for (var s2 = 0; s2 < 4; s2++) {
+      var total = S.scores ? S.scores[s2] : 0;
+      var col2 = (total > 0 ? '#2ecc71' : (total < 0 ? '#e74c3c' : '#fff'));
+      html += '<td style="color:' + col2 + ';font-size:14px;">' + total + '</td>';
+    }
+    html += '</tr>';
+    tbody.innerHTML = html;
+  }
+
   /* ================= UI Wiring & Listeners ================= */
   function initUI() {
+    // Restore Theme & Nickname from LocalStorage
+    try {
+      var savedTheme = localStorage.getItem('mj_theme') || 'emerald';
+      document.body.setAttribute('data-theme', savedTheme);
+      document.querySelectorAll('.theme-choice-btn').forEach(function(b) {
+        b.classList.toggle('active', b.getAttribute('data-theme') === savedTheme);
+      });
+
+      var savedName = localStorage.getItem('mj_player_name');
+      if (savedName) document.getElementById('inputMyName').value = savedName;
+    } catch (e) {}
+
+    document.getElementById('inputMyName').addEventListener('change', function() {
+      try { localStorage.setItem('mj_player_name', this.value); } catch (e) {}
+    });
+
     // Toolbar buttons
     document.getElementById('btnStartNew').addEventListener('click', function() {
       Audio.playButton();
@@ -1486,10 +1558,41 @@
       showModal('modalRules');
     });
 
+    document.getElementById('btnHistory').addEventListener('click', function() {
+      Audio.playButton();
+      renderHistoryTable();
+      showModal('modalHistory');
+    });
+
+    document.getElementById('btnSettings').addEventListener('click', function() {
+      Audio.playButton();
+      showModal('modalSettings');
+    });
+
     document.getElementById('btnSoundToggle').addEventListener('click', function() {
       Audio.muted = !Audio.muted;
       this.textContent = Audio.muted ? '🔇 静音' : '🔊 音效';
+      document.getElementById('btnSettingsSoundToggle').textContent = Audio.muted ? '🔇 关闭' : '🔊 开启';
       Audio.playButton();
+    });
+
+    document.getElementById('btnSettingsSoundToggle').addEventListener('click', function() {
+      Audio.muted = !Audio.muted;
+      this.textContent = Audio.muted ? '🔇 关闭' : '🔊 开启';
+      document.getElementById('btnSoundToggle').textContent = Audio.muted ? '🔇 静音' : '🔊 音效';
+      Audio.playButton();
+    });
+
+    // Theme selector buttons
+    document.querySelectorAll('.theme-choice-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.theme-choice-btn').forEach(function(b) { b.classList.remove('active'); });
+        this.classList.add('active');
+        var theme = this.getAttribute('data-theme');
+        document.body.setAttribute('data-theme', theme);
+        try { localStorage.setItem('mj_theme', theme); } catch (e) {}
+        Audio.playButton();
+      });
     });
 
     document.getElementById('btnLobby').addEventListener('click', function() {

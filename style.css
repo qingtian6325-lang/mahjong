@@ -1217,3 +1217,103 @@ html, body {
 
 .settle-score-delta.plus { color: #2ecc71; }
 .settle-score-delta.minus { color: #e74c3c; }
+
+/* ================= Theme Styles ================= */
+[data-theme="obsidian"] {
+  --table-felt: #1a2228;
+  --table-felt-deep: #0f1418;
+  --table-felt-light: #2c3640;
+  --tile-back-grad: linear-gradient(145deg, #2c3e50, #1a252f);
+}
+
+[data-theme="crimson"] {
+  --table-felt: #5c1818;
+  --table-felt-deep: #3b0d0d;
+  --table-felt-light: #7d2626;
+  --tile-back-grad: linear-gradient(145deg, #c0392b, #78281f);
+}
+
+/* ================= Discard Tap Pill Button ================= */
+.discard-tap-pill {
+  position: absolute;
+  top: -38px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #ffd32a, #ff9f1a);
+  color: #1a1202;
+  font-size: 13px;
+  font-weight: 900;
+  padding: 4px 12px;
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(255, 159, 26, 0.7);
+  cursor: pointer;
+  white-space: nowrap;
+  z-index: 50;
+  animation: bouncePill 0.6s infinite alternate;
+  border: 1px solid #fff;
+}
+
+@keyframes bouncePill {
+  from { transform: translateX(-50%) translateY(0); }
+  to { transform: translateX(-50%) translateY(-5px); }
+}
+
+/* ================= Scoreboard Ledger Table ================= */
+.history-table-wrap {
+  max-height: 260px;
+  overflow-y: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: center;
+}
+
+.history-table th {
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--gold-light);
+  padding: 8px 6px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.history-table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.history-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* ================= Compact Screen & Mobile Landscape Tweaks ================= */
+@media (max-height: 520px) {
+  :root {
+    --human-tile-w: clamp(30px, 5.2vw, 48px);
+    --pool-tile-w: clamp(15px, 2.4vw, 24px);
+    --opp-tile-w: clamp(16px, 2.6vw, 26px);
+  }
+  .compass-disc {
+    width: 86px !important;
+    height: 86px !important;
+  }
+  .timer-number {
+    font-size: 20px !important;
+  }
+  .top-toolbar {
+    height: 36px !important;
+  }
+  .seat-avatar {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 15px !important;
+  }
+  .action-btn {
+    height: 40px !important;
+    font-size: 15px !important;
+    padding: 0 12px !important;
+  }
+}
