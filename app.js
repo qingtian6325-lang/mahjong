@@ -1,7 +1,7 @@
 /**
- * Mahjong App Controller & UI Renderer
- * Handles Game State, Turn Cycle, 15s Countdown, Ting Assistant,
- * 3D Tile Rendering, Action Bar, SFX, Quick Chat, and Multiplayer Sync.
+ * Mahjong Master - Main Controller & Game Engine Link
+ * Complete Host-Authoritative Multiplayer Sync via Supabase Realtime,
+ * Drag-to-Discard on Mobile, Ting Assistant, 15s Countdown, and SFX.
  */
 (function() {
   'use strict';
@@ -11,8 +11,8 @@
   var Network = window.MahjongNetwork;
 
   var MODE = 'single'; // 'single' | 'host' | 'guest'
-  var ME = 0;          // absolute seat index (0..3)
-  var VIEW = 0;        // viewing rotation so ME is always at bottom
+  var ME = 0;          // absolute seat (0..3)
+  var VIEW = 0;        // view rotation (ME is at screen bottom)
 
   function screenPos(absSeat) {
     return (absSeat - VIEW + 4) % 4; // 0: bottom, 1: right, 2: top, 3: left
@@ -22,9 +22,19 @@
     return (pos + VIEW) % 4;
   }
 
-  var S = null; // Game state
+  var S = null; // Local game state
   var timerInterval = null;
   var timerRemaining = 15;
+
+  // Host-side pending waits for remote guests
+  var hostPending = {};
+  var hostWaitSeq = 0;
+  var hostSyncTimer = null;
+
+  // Guest-side cache
+  var guestMyHand = [];
+  var guestMyDrawn = null;
+  var guestLastSeq = 0;
 
   /* ================= Initialization ================= */
   window.addEventListener('DOMContentLoaded', function() {
@@ -39,7 +49,8 @@
       var code = room.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
       if (code.length === 4) {
         document.getElementById('inputJoinCode').value = code;
-        showModal('modalJoin');
+        showModal('modalLobby');
+        showToast('已加载邀请房间：' + code + '，请点击加入');
       }
     }
   }
@@ -54,7 +65,9 @@
   }
 
   function startNewGame(spec) {
-    spec = spec || singleSpec();
+    clearHostPending();
+    spec = spec || (MODE === 'single' ? singleSpec() : buildMultiplayerSpec());
+
     S = {
       gen: (S ? S.gen + 1 : 1),
       round: (S && S.round ? S.round : 1),
@@ -69,10 +82,29 @@
       over: false,
       selectedTile: null,
       tingMap: {},
-      pendingWait: null,
+      pendingDiscardResolve: null,
       spec: spec
     };
+
     startRound();
+  }
+
+  function buildMultiplayerSpec() {
+    var sess = Network.currentSession;
+    if (!sess) return singleSpec();
+
+    var bi = 0;
+    return sess.seats.map(function(s, idx) {
+      if (idx === 0) {
+        return { name: sess.myName, ctrl: 'local', av: sess.myName.charAt(0), clientId: sess.myId, online: true };
+      }
+      if (s && s.online !== false) {
+        return { name: s.name, ctrl: 'remote', av: s.name.charAt(0), clientId: s.clientId, online: true };
+      }
+      // Fill empty with bot
+      var bName = Engine.BOT_NAMES[bi++ % 3];
+      return { name: bName, ctrl: 'bot', av: bName.charAt(2) };
+    });
   }
 
   function startRound() {
@@ -81,7 +113,7 @@
     for (var wI = 0; wI < 4; wI++) wall.push(Engine.WILD);
     for (var f = 35; f <= 42; f++) wall.push(f);
 
-    // Fisher-Yates shuffle
+    // Shuffle
     for (var i = wall.length - 1; i > 0; i--) {
       var j = Math.floor(Math.random() * (i + 1));
       var tmp = wall[i]; wall[i] = wall[j]; wall[j] = tmp;
@@ -111,7 +143,7 @@
       };
     });
 
-    // Deal 13 tiles to each player
+    // Deal 13 tiles
     for (var p = 0; p < 4; p++) {
       for (var d = 0; d < 13; d++) S.players[p].hand.push(S.wall.shift());
     }
@@ -126,11 +158,12 @@
         pl.hand.push(S.wall.pop());
       }
       sortHand(pl);
-      checkFlowerSettle(p2, true); // Deal-time flower kong (天花杠: 4 from each)
+      checkFlowerSettle(p2, true); // 天花杠
     }
 
     showToast('第 ' + S.round + ' 局开始，' + S.players[S.dealer].name + ' 坐庄');
     render();
+    scheduleSync();
 
     if (MODE !== 'guest') {
       runTurnLoop(S.gen);
@@ -144,7 +177,7 @@
   /* ================= Turn Cycle Engine ================= */
   async function runTurnLoop(gen) {
     var cur = S.dealer;
-    var skip = false; // false | true (after chi/pon) | 'kong'
+    var skip = false;
 
     while (gen === S.gen && !S.over) {
       if (S.wall.length === 0) {
@@ -162,17 +195,19 @@
   async function doTurn(pIdx, skip, gen) {
     var p = S.players[pIdx];
     S.current = pIdx;
+    scheduleSync();
     startTurnTimer(pIdx);
 
     // 1. Draw Phase
     if (skip === 'kong') {
-      await sleep(p.isBot ? 800 : 50);
+      await sleep(p.isBot ? 800 : 80);
       if (drawTile(pIdx, true) === null) { endRoundDraw(); return { end: true }; }
     } else if (!skip) {
-      await sleep(p.isBot ? 800 : 50);
+      await sleep(p.isBot ? 800 : 80);
       if (drawTile(pIdx, false) === null) { endRoundDraw(); return { end: true }; }
     }
     render();
+    scheduleSync();
 
     // 2. Action / Discard Phase
     var discardResult;
@@ -182,24 +217,22 @@
       if (!p.isBot && p.ctrl === 'local') {
         discardResult = await humanTurnAction(pIdx, gen);
       } else if (p.ctrl === 'remote' && MODE === 'host') {
-        discardResult = await remoteTurnAction(pIdx, gen);
+        discardResult = await remoteDiscardWait(pIdx, gen);
       } else {
         // Bot turn
-        await sleep(700);
+        await sleep(750);
         discardResult = botTurnDecision(p);
       }
 
       if (gen !== S.gen) return { end: true };
 
       if (discardResult.type === 'tsumo') {
-        // Self-draw Win!
         endRoundWin(pIdx, pIdx, true);
         return { end: true };
       } else if (discardResult.type === 'kong') {
-        // Kong performed on own turn (暗杠 or 补杠)
         executeOwnKong(pIdx, discardResult.kong);
         render();
-        // Kong gives replacement tile from wall tail
+        scheduleSync();
         return { next: pIdx, skip: 'kong' };
       } else if (discardResult.type === 'discard') {
         break;
@@ -218,13 +251,13 @@
 
     Audio.playTileDrop();
     render();
+    scheduleSync();
 
     // 4. Claims from other players (吃 / 碰 / 杠 / 胡)
     var claimRes = await processClaims(pIdx, dTile, gen);
     if (gen !== S.gen || S.over) return { end: true };
     if (claimRes) return claimRes;
 
-    // Normal next player: clockwise (downstream = (pIdx + 1) % 4)
     return { next: (pIdx + 1) % 4, skip: false };
   }
 
@@ -234,7 +267,7 @@
     var t = fromTail ? S.wall.pop() : S.wall.shift();
 
     var guard = 0;
-    while (Engine.isFlower(t) && guard++ < 20) {
+    while (Engine.isFlower(t) && guard++ < 24) {
       p.flowers.push(t);
       checkFlowerSettle(pIdx, false);
       showToast(p.name + ' 补花【' + Engine.tileName(t) + '】');
@@ -244,7 +277,7 @@
 
     p.hand.push(t);
     p.lastDrawn = t;
-    p.guoshui = false; // drawing tile clears over-water (过水解除)
+    p.guoshui = false; // Over-water clears upon drawing a tile
 
     if (pIdx === ME) {
       Audio.playTileClick();
@@ -280,6 +313,7 @@
     Audio.playGang();
     showToast(S.players[pIdx].name + ' ' + label + '，每家给 ' + perPlayer + ' 分');
     render();
+    scheduleSync();
   }
 
   function checkFlowerSettle(pIdx, atDeal) {
@@ -363,25 +397,25 @@
       if (ans.act === 'gang') {
         removeFromHand(pObj, tile, 3);
         pObj.melds.push({ kind: 'kong', tiles: [tile, tile, tile, tile], from: discarder });
-        pObj.discards = pObj.discards || [];
         settleInstant(s, 2, '明杠');
+        scheduleSync();
         return { next: s, skip: 'kong' };
       } else if (ans.act === 'peng') {
         removeFromHand(pObj, tile, 2);
         pObj.melds.push({ kind: 'pon', tiles: [tile, tile, tile], from: discarder });
         showVFX('碰');
         Audio.playPeng();
+        scheduleSync();
         return { next: s, skip: true };
       }
     }
 
-    // Priority 3: Chi (吃) - left player only
+    // Priority 3: Chi (吃)
     for (var c = 0; c < answers.length; c++) {
       if (answers[c].act === 'chi' && answers[c].meld) {
         var cs = responders[c];
         var cp = S.players[cs];
         var mTiles = answers[c].meld;
-        // remove the two tiles from hand
         var toRemove = mTiles.slice();
         var tIdx = toRemove.indexOf(tile);
         if (tIdx >= 0) toRemove.splice(tIdx, 1);
@@ -389,11 +423,12 @@
         cp.melds.push({ kind: 'chi', tiles: mTiles, from: discarder });
         showVFX('吃');
         Audio.playChi();
+        scheduleSync();
         return { next: cs, skip: true };
       }
     }
 
-    // Pass: record over-water (过水) if player passed on Hu
+    // Over-water recording if passed on Hu
     for (var p = 0; p < answers.length; p++) {
       if (answers[p].couldHu && answers[p].act === 'pass') {
         S.players[responders[p]].guoshui = true;
@@ -432,10 +467,368 @@
       });
     }
 
-    // Remote multiplayer player
+    // Remote player on Host
+    if (p.ctrl === 'remote' && MODE === 'host') {
+      return remoteClaimWait(seat, options, gen);
+    }
+
+    return Promise.resolve({ act: 'pass' });
+  }
+
+  /* ================= Host-Authoritative Remote Waits ================= */
+  function remoteDiscardWait(seat, gen) {
     return new Promise(function(resolve) {
-      // Handled via Supabase broadcast
-      resolve({ act: 'pass' });
+      var p = S.players[seat];
+      if (!p.clientId) {
+        resolve(botTurnDecision(p));
+        return;
+      }
+
+      var wid = ++hostWaitSeq;
+      var payload = {
+        to: p.clientId,
+        wid: wid,
+        canTsumo: Engine.canWinHand(p.hand, p.melds.length),
+        kongs: S.wall.length ? Engine.findKongs(p) : []
+      };
+
+      var pending = {
+        type: 'discard',
+        seat: seat,
+        wid: wid,
+        resolve: resolve,
+        timer: null,
+        resend: null
+      };
+
+      // Fallback timer: 25s for timeout -> bot takeover
+      pending.timer = setTimeout(function() {
+        if (hostPending[seat] === pending) {
+          clearHostPending(seat);
+          showToast(p.name + ' 超时，由机器人代打出牌');
+          resolve(botTurnDecision(p));
+        }
+      }, p.online ? 25000 : 8000);
+
+      // Resend every 3.5s in case packets are dropped
+      pending.resend = setInterval(function() {
+        if (!hostPending[seat] || hostPending[seat] !== pending) {
+          clearInterval(pending.resend);
+          return;
+        }
+        Network.send('turn', payload);
+        var pl = S.players[seat];
+        if (pl && pl.clientId) {
+          Network.send('hand', { to: pl.clientId, hand: pl.hand.slice(), lastDrawn: pl.lastDrawn });
+        }
+      }, 3500);
+
+      hostPending[seat] = pending;
+      Network.send('turn', payload);
+      Network.send('hand', { to: p.clientId, hand: p.hand.slice(), lastDrawn: p.lastDrawn });
+    });
+  }
+
+  function remoteClaimWait(seat, options, gen) {
+    return new Promise(function(resolve) {
+      var p = S.players[seat];
+      if (!p.clientId) {
+        resolve({ act: 'pass' });
+        return;
+      }
+
+      var wid = ++hostWaitSeq;
+      var payload = {
+        to: p.clientId,
+        wid: wid,
+        canHu: options.canHu,
+        canGang: options.canGang,
+        canPeng: options.canPeng,
+        canChi: options.canChi,
+        tile: options.tile
+      };
+
+      var pending = {
+        type: 'claim',
+        seat: seat,
+        wid: wid,
+        resolve: resolve,
+        timer: null,
+        resend: null
+      };
+
+      pending.timer = setTimeout(function() {
+        if (hostPending[seat] === pending) {
+          clearHostPending(seat);
+          resolve({ act: 'pass', couldHu: options.canHu });
+        }
+      }, p.online ? 16000 : 6000);
+
+      pending.resend = setInterval(function() {
+        if (!hostPending[seat] || hostPending[seat] !== pending) {
+          clearInterval(pending.resend);
+          return;
+        }
+        Network.send('claim', payload);
+      }, 3500);
+
+      hostPending[seat] = pending;
+      Network.send('claim', payload);
+    });
+  }
+
+  function clearHostPending(seat) {
+    if (seat !== undefined) {
+      var pd = hostPending[seat];
+      if (pd) {
+        if (pd.timer) clearTimeout(pd.timer);
+        if (pd.resend) clearInterval(pd.resend);
+        delete hostPending[seat];
+      }
+    } else {
+      Object.keys(hostPending).forEach(function(k) {
+        var p = hostPending[k];
+        if (p) {
+          if (p.timer) clearTimeout(p.timer);
+          if (p.resend) clearInterval(p.resend);
+        }
+      });
+      hostPending = {};
+    }
+  }
+
+  /* Host receives guest action */
+  function onHostGuestAction(p) {
+    if (!S || MODE !== 'host') return;
+    var seat = seatOfClient(p.from);
+    if (seat < 0) return;
+    var pd = hostPending[seat];
+    if (!pd || pd.type !== 'discard') return;
+
+    var pl = S.players[seat];
+    var act = p.act || {};
+    var out = null;
+
+    if (act.type === 'tsumo' && Engine.canWinHand(pl.hand, pl.melds.length)) {
+      out = { type: 'tsumo' };
+    } else if (act.type === 'kong' && act.kong) {
+      out = { type: 'kong', kong: act.kong };
+    } else if (act.type === 'discard' && pl.hand.indexOf(act.tile) >= 0) {
+      out = { type: 'discard', tile: act.tile };
+    }
+
+    if (out) {
+      clearHostPending(seat);
+      pd.resolve(out);
+    }
+  }
+
+  /* Host receives guest claim answer */
+  function onHostGuestClaimAnswer(p) {
+    if (!S || MODE !== 'host') return;
+    var seat = seatOfClient(p.from);
+    if (seat < 0) return;
+    var pd = hostPending[seat];
+    if (!pd || pd.type !== 'claim') return;
+
+    clearHostPending(seat);
+    pd.resolve({ act: p.act || 'pass', meld: p.meld, couldHu: !!p.couldHu });
+  }
+
+  function seatOfClient(clientId) {
+    if (!S) return -1;
+    for (var i = 0; i < 4; i++) {
+      if (S.players[i].clientId === clientId) return i;
+    }
+    return -1;
+  }
+
+  /* ================= State Sync (Host -> Guests) ================= */
+  function scheduleSync() {
+    if (MODE !== 'host' || hostSyncTimer) return;
+    hostSyncTimer = setTimeout(function() {
+      hostSyncTimer = null;
+      doSync();
+    }, 60);
+  }
+
+  function doSync() {
+    if (MODE !== 'host' || !S) return;
+    var snap = {
+      round: S.round,
+      dealer: S.dealer,
+      current: S.current,
+      wallCount: S.wall.length,
+      over: S.over,
+      scores: S.scores,
+      lastDeltas: S.lastDeltas,
+      history: S.history,
+      lastDiscard: S.lastDiscard,
+      players: S.players.map(function(p) {
+        return {
+          name: p.name,
+          ctrl: p.ctrl,
+          online: p.online,
+          av: p.av,
+          handCount: p.hand.length,
+          melds: p.melds,
+          flowers: p.flowers,
+          flowerKong: p.flowerKong,
+          discards: p.discards,
+          guoshui: !!p.guoshui
+        };
+      }),
+      reveal: S.over ? S.players.map(function(p) { return p.hand.slice(); }) : null
+    };
+
+    Network.send('state', snap);
+
+    // Private hand broadcasts
+    for (var i = 0; i < 4; i++) {
+      var pl = S.players[i];
+      if (pl.ctrl === 'remote' && pl.clientId) {
+        Network.send('hand', {
+          to: pl.clientId,
+          hand: pl.hand.slice(),
+          lastDrawn: pl.lastDrawn
+        });
+      }
+    }
+  }
+
+  /* ================= Guest Handling ================= */
+  function onGuestStateReceived(snap) {
+    if (!snap || MODE !== 'guest') return;
+
+    if (!S) {
+      S = {
+        gen: 1,
+        scores: [0, 0, 0, 0],
+        lastDeltas: null,
+        history: [],
+        round: 1,
+        dealer: 0,
+        wall: [],
+        players: [],
+        current: -1,
+        lastDiscard: null,
+        over: false,
+        selectedTile: null,
+        tingMap: {},
+        spec: singleSpec()
+      };
+    }
+
+    S.round = snap.round;
+    S.dealer = snap.dealer;
+    S.current = snap.current;
+    S.over = snap.over;
+    S.scores = snap.scores;
+    S.lastDeltas = snap.lastDeltas;
+    S.history = snap.history;
+    S.lastDiscard = snap.lastDiscard;
+    S.wall = new Array(snap.wallCount || 0);
+
+    S.players = snap.players.map(function(sp, idx) {
+      var hand;
+      if (snap.reveal) {
+        hand = snap.reveal[idx].slice();
+      } else if (idx === ME) {
+        hand = guestMyHand ? guestMyHand.slice() : [];
+      } else {
+        hand = [];
+        for (var k = 0; k < sp.handCount; k++) hand.push(0);
+      }
+
+      return {
+        name: sp.name,
+        isBot: sp.ctrl === 'bot',
+        ctrl: (idx === ME ? 'local' : (sp.ctrl === 'bot' ? 'bot' : 'remote')),
+        clientId: null,
+        online: sp.online,
+        av: sp.av,
+        hand: hand,
+        melds: sp.melds,
+        flowers: sp.flowers,
+        flowerKong: sp.flowerKong,
+        discards: sp.discards,
+        guoshui: !!sp.guoshui,
+        lastDrawn: (idx === ME ? guestMyDrawn : null)
+      };
+    });
+
+    startTurnTimer(S.current);
+    render();
+
+    if (snap.over && !document.getElementById('modalSettle').classList.contains('show')) {
+      var winnerSeat = -1;
+      if (snap.lastDeltas) {
+        for (var d = 0; d < 4; d++) {
+          if (snap.lastDeltas[d] > 0) winnerSeat = d;
+        }
+      }
+      showSettlementModal(winnerSeat, false, snap.lastDeltas || [0, 0, 0, 0]);
+    }
+  }
+
+  function onGuestHandReceived(hand, lastDrawn) {
+    guestMyHand = hand || [];
+    guestMyDrawn = lastDrawn;
+    if (S && S.players[ME]) {
+      S.players[ME].hand = guestMyHand.slice();
+      S.players[ME].lastDrawn = guestMyDrawn;
+      render();
+    }
+  }
+
+  function onGuestTurnReceived(payload) {
+    if (!S || MODE !== 'guest') return;
+
+    var mePlayer = S.players[ME];
+    updateTingAssistant(mePlayer);
+
+    renderOwnTurnActionBar({
+      canHu: !!payload.canTsumo,
+      kongs: payload.kongs || [],
+      onAction: function(type, kongObj) {
+        clearActionBar();
+        hideTingTooltip();
+        Network.send('action', {
+          from: Network.currentSession.myId,
+          act: { type: type, kong: kongObj }
+        });
+      }
+    });
+
+    S.pendingDiscardResolve = function(tile) {
+      clearActionBar();
+      hideTingTooltip();
+      S.pendingDiscardResolve = null;
+      Network.send('action', {
+        from: Network.currentSession.myId,
+        act: { type: 'discard', tile: tile }
+      });
+    };
+  }
+
+  function onGuestClaimReceived(payload) {
+    if (!S || MODE !== 'guest') return;
+
+    renderActionBar({
+      canHu: payload.canHu,
+      canGang: payload.canGang,
+      canPeng: payload.canPeng,
+      canChi: payload.canChi,
+      tile: payload.tile,
+      onAction: function(act, data) {
+        clearActionBar();
+        Network.send('claim-answer', {
+          from: Network.currentSession.myId,
+          act: act,
+          meld: data,
+          couldHu: payload.canHu
+        });
+      }
     });
   }
 
@@ -463,7 +856,6 @@
         renderOwnTurnActionBar(actions);
       }
 
-      // Discard selection handler
       S.pendingDiscardResolve = function(tile) {
         clearActionBar();
         hideTingTooltip();
@@ -493,7 +885,6 @@
     var winName = S.players[winnerSeat].name;
 
     if (isZimo) {
-      // Zimo: 4 from each other player (+12 total)
       for (var i = 0; i < 4; i++) {
         if (i !== winnerSeat) { deltas[i] = -4; deltas[winnerSeat] += 4; }
       }
@@ -501,7 +892,6 @@
       Audio.playZimo();
       showToast('🎉 ' + winName + ' 自摸胡牌！');
     } else {
-      // Dian Pao: 4 from discarder, 2 from other two (+8 total)
       deltas[loserSeat] -= 4;
       deltas[winnerSeat] += 4;
       for (var j = 0; j < 4; j++) {
@@ -524,6 +914,8 @@
     });
 
     render();
+    scheduleSync();
+
     setTimeout(function() {
       showSettlementModal(winnerSeat, isZimo, deltas);
     }, 1200);
@@ -535,6 +927,8 @@
     showVFX('流局');
     showToast('牌墙已摸完，本局流局（不计分）');
     render();
+    scheduleSync();
+
     setTimeout(function() {
       showSettlementModal(-1, false, [0, 0, 0, 0]);
     }, 1200);
@@ -573,7 +967,7 @@
     if (!numEl || !ringEl) return;
 
     numEl.textContent = sec;
-    var totalCircumference = 314; // 2 * PI * 50
+    var totalCircumference = 314;
     var offset = totalCircumference * (1 - sec / 15);
     ringEl.style.strokeDashoffset = offset;
 
@@ -590,7 +984,7 @@
   }
 
   function onTimerExpire(seat) {
-    if (S.pendingDiscardResolve) {
+    if (S && S.pendingDiscardResolve) {
       var pl = S.players[seat];
       var discardTile = Engine.aiChooseDiscard(pl);
       S.pendingDiscardResolve(discardTile);
@@ -607,7 +1001,6 @@
   function getVisibleTileCounts() {
     var counts = {};
     if (!S) return counts;
-    // Discard pools
     for (var i = 0; i < 4; i++) {
       var pl = S.players[i];
       if (!pl) continue;
@@ -676,31 +1069,26 @@
     bar.innerHTML = '';
 
     if (opts.canHu) {
-      var huBtn = createActionBtn('胡', 'hu', function() { opts.onAction('hu'); });
-      bar.appendChild(huBtn);
+      bar.appendChild(createActionBtn('胡', 'hu', function() { opts.onAction('hu'); }));
     }
     if (opts.canGang) {
-      var gangBtn = createActionBtn('杠', 'gang', function() { opts.onAction('gang'); });
-      bar.appendChild(gangBtn);
+      bar.appendChild(createActionBtn('杠', 'gang', function() { opts.onAction('gang'); }));
     }
     if (opts.canPeng) {
-      var pengBtn = createActionBtn('碰', 'peng', function() { opts.onAction('peng'); });
-      bar.appendChild(pengBtn);
+      bar.appendChild(createActionBtn('碰', 'peng', function() { opts.onAction('peng'); }));
     }
     if (opts.canChi) {
       var options = Engine.findChiOptions(S.players[ME].hand, opts.tile);
-      var chiBtn = createActionBtn('吃', 'chi', function() {
+      bar.appendChild(createActionBtn('吃', 'chi', function() {
         if (options.length === 1) {
           opts.onAction('chi', options[0]);
         } else {
           showChiChoicePopup(options, opts.onAction);
         }
-      });
-      bar.appendChild(chiBtn);
+      }));
     }
 
-    var passBtn = createActionBtn('过', 'pass', function() { opts.onAction('pass'); });
-    bar.appendChild(passBtn);
+    bar.appendChild(createActionBtn('过', 'pass', function() { opts.onAction('pass'); }));
   }
 
   function renderOwnTurnActionBar(opts) {
@@ -709,19 +1097,16 @@
     bar.innerHTML = '';
 
     if (opts.canHu) {
-      var huBtn = createActionBtn('自摸', 'hu', function() { opts.onAction('hu'); });
-      bar.appendChild(huBtn);
+      bar.appendChild(createActionBtn('自摸', 'hu', function() { opts.onAction('hu'); }));
     }
     if (opts.kongs && opts.kongs.length > 0) {
-      var gangBtn = createActionBtn('杠', 'gang', function() {
+      bar.appendChild(createActionBtn('杠', 'gang', function() {
         if (opts.kongs.length === 1) {
           opts.onAction('kong', opts.kongs[0]);
         } else {
-          // choice popup if multiple kongs
           opts.onAction('kong', opts.kongs[0]);
         }
-      });
-      bar.appendChild(gangBtn);
+      }));
     }
   }
 
@@ -768,17 +1153,17 @@
     if (!S) return;
 
     // 1. Center Compass & Wall
-    document.getElementById('wallCountBadge').textContent = '余 ' + S.wall.length + ' 张';
-    var winds = ['top', 'right', 'bottom', 'left'];
+    document.getElementById('wallCountBadge').textContent = '余 ' + (S.wall ? S.wall.length : 0) + ' 张';
+    var winds = ['bottom', 'right', 'top', 'left'];
     winds.forEach(function(posClass, i) {
-      var el = document.getElementById('windMarker' + (i));
+      var el = document.getElementById('windMarker' + i);
       if (el) {
         var windSeat = absSeatAt(i);
         el.className = 'wind-marker ' + posClass + (windSeat === S.current ? ' active-turn' : '');
       }
     });
 
-    // 2. Player Seat Cards (0: Bottom, 1: Right, 2: Top, 3: Left)
+    // 2. Player Seat Cards
     for (var pos = 0; pos < 4; pos++) {
       var absSeat = absSeatAt(pos);
       var p = S.players[absSeat];
@@ -794,13 +1179,13 @@
       if (nameEl) nameEl.textContent = p.name;
 
       var scoreEl = document.getElementById('seatScore_' + prefix);
-      if (scoreEl) scoreEl.textContent = S.scores[absSeat];
+      if (scoreEl) scoreEl.textContent = S.scores[absSeat] || 0;
 
       var dealerTag = document.getElementById('dealerTag_' + prefix);
       if (dealerTag) dealerTag.style.display = (absSeat === S.dealer ? 'block' : 'none');
 
       // 3. Discard Pools
-      renderDiscardPool(pos, p.discards);
+      renderDiscardPool(pos, p.discards || []);
 
       // 4. Opponent Hand Backs and Melds
       if (pos !== 0) {
@@ -839,7 +1224,7 @@
     var meldsEl = document.getElementById('oppMelds_' + prefix);
     if (meldsEl) {
       var meldHTML = '';
-      player.melds.forEach(function(m) {
+      (player.melds || []).forEach(function(m) {
         meldHTML += '<div class="meld-group" style="display:flex;gap:1px;margin-right:4px;">';
         m.tiles.forEach(function(t) { meldHTML += Engine.tileHTML(t); });
         meldHTML += '</div>';
@@ -850,12 +1235,13 @@
     var flowersEl = document.getElementById('oppFlowers_' + prefix);
     if (flowersEl) {
       var flowerHTML = '';
-      player.flowers.forEach(function(f) { flowerHTML += Engine.tileHTML(f); });
+      (player.flowers || []).forEach(function(f) { flowerHTML += Engine.tileHTML(f); });
       flowersEl.innerHTML = flowerHTML;
     }
   }
 
   function renderHumanHand(player) {
+    if (!player) return;
     var handRow = document.getElementById('humanHandRow');
     if (!handRow) return;
 
@@ -868,21 +1254,26 @@
     });
     handRow.innerHTML = html;
 
-    // Attach tile tap / click listeners
+    // Attach tile tap / click listeners & Touch drag to discard
     var tileEls = handRow.querySelectorAll('.mj-tile');
     tileEls.forEach(function(el) {
+      var t = parseInt(el.getAttribute('data-tile'), 10);
+
+      // Tap click
       el.addEventListener('click', function(e) {
         e.stopPropagation();
-        var t = parseInt(el.getAttribute('data-tile'), 10);
         onHumanTileClick(t);
       });
+
+      // Mobile Touch drag-to-discard (触屏滑动手牌出牌)
+      attachDragToDiscard(el, t);
     });
 
     // Human Melds
     var meldsEl = document.getElementById('humanMeldsArea');
     if (meldsEl) {
       var mHtml = '';
-      player.melds.forEach(function(m) {
+      (player.melds || []).forEach(function(m) {
         mHtml += '<div class="meld-group" style="display:flex;gap:1px;margin-right:6px;">';
         m.tiles.forEach(function(t) { mHtml += Engine.tileHTML(t); });
         mHtml += '</div>';
@@ -894,16 +1285,55 @@
     var flowersEl = document.getElementById('humanFlowersArea');
     if (flowersEl) {
       var fHtml = '';
-      player.flowers.forEach(function(f) { fHtml += Engine.tileHTML(f); });
+      (player.flowers || []).forEach(function(f) { fHtml += Engine.tileHTML(f); });
       flowersEl.innerHTML = fHtml;
     }
 
     renderHandTingBadges();
   }
 
+  function attachDragToDiscard(tileEl, tile) {
+    var startY = 0;
+    var startX = 0;
+    var isDragging = false;
+
+    tileEl.addEventListener('touchstart', function(e) {
+      if (S.current !== ME || !S.pendingDiscardResolve) return;
+      var touch = e.touches[0];
+      startY = touch.clientY;
+      startX = touch.clientX;
+      isDragging = true;
+    }, { passive: true });
+
+    tileEl.addEventListener('touchmove', function(e) {
+      if (!isDragging) return;
+      var touch = e.touches[0];
+      var deltaY = touch.clientY - startY;
+      if (deltaY < -15) {
+        tileEl.style.transform = 'translateY(' + deltaY + 'px)';
+      }
+    }, { passive: true });
+
+    tileEl.addEventListener('touchend', function(e) {
+      if (!isDragging) return;
+      isDragging = false;
+      var touch = e.changedTouches[0];
+      var deltaY = touch.clientY - startY;
+      tileEl.style.transform = '';
+
+      // Dragged up by > 45px -> Discard immediately!
+      if (deltaY < -45 && S.current === ME && S.pendingDiscardResolve) {
+        var resolve = S.pendingDiscardResolve;
+        S.selectedTile = null;
+        hideTingTooltip();
+        clearHighlightMatchingTiles();
+        resolve(tile);
+      }
+    });
+  }
+
   function onHumanTileClick(t) {
     if (S.current !== ME || !S.pendingDiscardResolve) {
-      // Just preview highlight
       highlightMatchingTiles(t);
       Audio.playTileClick();
       return;
@@ -948,7 +1378,7 @@
     if (!banner) return;
     banner.textContent = text;
     banner.classList.remove('play');
-    void banner.offsetWidth; // re-trigger reflow
+    void banner.offsetWidth;
     banner.classList.add('play');
 
     clearTimeout(vfxTimer);
@@ -994,7 +1424,6 @@
 
   /* ================= Settlement Modal ================= */
   function showSettlementModal(winnerSeat, isZimo, deltas) {
-    var modal = document.getElementById('modalSettle');
     var titleEl = document.getElementById('settleTitle');
     var subEl = document.getElementById('settleSub');
     var listEl = document.getElementById('settleList');
@@ -1068,6 +1497,11 @@
       showModal('modalLobby');
     });
 
+    document.getElementById('btnLeaveRoom').addEventListener('click', function() {
+      Audio.playButton();
+      leaveOnlineRoom();
+    });
+
     // Close buttons for modals
     document.querySelectorAll('.close-btn, .modal-close-action').forEach(function(btn) {
       btn.addEventListener('click', function() {
@@ -1079,8 +1513,10 @@
     // Settle Continue button
     document.getElementById('btnSettleNext').addEventListener('click', function() {
       hideModal('modalSettle');
-      if (S) S.round++;
-      startRound();
+      if (MODE !== 'guest') {
+        if (S) S.round++;
+        startRound();
+      }
     });
 
     // Quick Chat UI
@@ -1112,7 +1548,6 @@
       document.getElementById('chatEmojiGrid').style.display = 'grid';
     });
 
-    // Chat items click
     document.querySelectorAll('.chat-item').forEach(function(item) {
       item.addEventListener('click', function() {
         var text = this.textContent;
@@ -1146,7 +1581,7 @@
       var code = (document.getElementById('inputJoinCode').value || '').toUpperCase().trim();
       var name = document.getElementById('inputMyName').value || '玩家';
       if (code.length !== 4) {
-        showToast('请输入正确的4位房间号');
+        showToast('请输入正确的4位房号');
         return;
       }
       connectOnlineRoom(code, false, name);
@@ -1159,11 +1594,11 @@
           showToast('房间邀请链接已复制！');
         });
       } else {
-        showToast('请长按复制链接');
+        showToast('长按链接即可复制');
       }
     });
 
-    // Start initial single player game
+    // Start single player by default
     startNewGame();
   }
 
@@ -1174,11 +1609,15 @@
     Network.connect(code, asHost, name, {
       onConnected: function(isHost, roomCode) {
         MODE = isHost ? 'host' : 'guest';
+        ME = isHost ? 0 : -1;
+        VIEW = isHost ? 0 : 0;
+
         document.getElementById('lobbyRoomCode').textContent = roomCode;
         var shareLink = Network.getShareLink(roomCode);
         document.getElementById('lobbyShareLink').value = shareLink;
+        document.getElementById('btnLeaveRoom').style.display = 'inline-flex';
 
-        // Draw QR Code
+        // Render QR Code
         var qrCanvas = document.getElementById('lobbyQRCodeCanvas');
         if (window.drawQRCode && qrCanvas) {
           window.drawQRCode(shareLink, qrCanvas, 140);
@@ -1194,9 +1633,68 @@
         ME = seat;
         VIEW = seat;
         render();
+        showToast('分配到座位：' + (seat + 1) + '号位');
+      },
+      onStateReceived: function(snap) {
+        onGuestStateReceived(snap);
+      },
+      onHandReceived: function(hand, lastDrawn) {
+        onGuestHandReceived(hand, lastDrawn);
+      },
+      onGuestTurn: function(payload) {
+        onGuestTurnReceived(payload);
+      },
+      onGuestClaim: function(payload) {
+        onGuestClaimReceived(payload);
+      },
+      onGuestAction: function(payload) {
+        onHostGuestAction(payload);
+      },
+      onGuestClaimAnswer: function(payload) {
+        onHostGuestClaimAnswer(payload);
+      },
+      onGuestBye: function(payload) {
+        if (MODE === 'host' && S) {
+          var seat = seatOfClient(payload.from);
+          if (seat >= 0) {
+            S.players[seat].ctrl = 'bot';
+            S.players[seat].isBot = true;
+            showToast(S.players[seat].name + ' 离线，转由机器人代打');
+            render();
+            scheduleSync();
+          }
+        }
+      },
+      onPlayerOnlineChange: function(seat, isOnline, pName) {
+        if (MODE === 'host' && S && S.players[seat]) {
+          S.players[seat].online = isOnline;
+          showToast(pName + (isOnline ? ' 回来了' : ' 暂时掉线'));
+          render();
+          scheduleSync();
+        }
+      },
+      onGuestRejoin: function(rejoinName, clientId) {
+        // Find offline seat matching name
+        if (S) {
+          for (var i = 1; i < 4; i++) {
+            if (S.players[i].name === rejoinName) {
+              S.players[i].clientId = clientId;
+              S.players[i].online = true;
+              S.players[i].ctrl = 'remote';
+              S.players[i].isBot = false;
+              scheduleSync();
+              return i;
+            }
+          }
+        }
+        return -1;
       },
       onChatReceived: function(msg) {
         showSpeechBubble(msg.seat, msg.content);
+      },
+      onHostGone: function() {
+        showToast('房主已离开，房间已关闭');
+        leaveOnlineRoom();
       },
       onError: function(err) {
         showToast(err);
@@ -1219,7 +1717,7 @@
         html += '<div class="lobby-seat-card">' +
           '<div class="seat-avatar av-' + idx + '">' + s.name.charAt(0) + '</div>' +
           '<div><div style="font-weight:bold;">' + s.name + '</div>' +
-          (s.host ? '<span class="status-tag" style="background:#d4af37;color:#111;">房主</span>' : '<span class="status-tag">玩家</span>') +
+          (s.host ? '<span class="status-tag" style="background:#d4af37;color:#111;">房主</span>' : '<span class="status-tag">在线</span>') +
           '</div></div>';
       }
     });
@@ -1227,12 +1725,25 @@
 
     var startBtn = document.getElementById('btnStartOnlineGame');
     if (startBtn) {
-      startBtn.style.display = (Network.currentSession && Network.currentSession.isHost) ? 'block' : 'none';
+      var isHost = (Network.currentSession && Network.currentSession.isHost);
+      startBtn.style.display = isHost ? 'block' : 'none';
       startBtn.onclick = function() {
         hideModal('modalLobby');
+        if (Network.currentSession) Network.currentSession.started = true;
+        Network.broadcastLobby();
         startNewGame();
       };
     }
+  }
+
+  function leaveOnlineRoom() {
+    Network.leave();
+    MODE = 'single';
+    ME = 0;
+    VIEW = 0;
+    document.getElementById('btnLeaveRoom').style.display = 'none';
+    showToast('已回到单机模式');
+    startNewGame();
   }
 
   window.MahjongApp = {
