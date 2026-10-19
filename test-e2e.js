@@ -387,6 +387,57 @@ async function runTests() {
     document.getElementById('choiceConfirmModal').style.display = 'none';
   });
 
+  // TEST 10: Speech Voice System (真人语音报牌、吃碰杠胡、快捷短句与表情音效)
+  console.log('\n[TEST 10] Testing Voice Speech System (报牌、吃碰杠胡、短句朗读与表情音效)...');
+
+  const test10Results = await page.evaluate(() => {
+    let capturedSpeech = [];
+    if ('speechSynthesis' in window) {
+      const origSpeak = window.speechSynthesis.speak.bind(window.speechSynthesis);
+      window.speechSynthesis.speak = function(u) {
+        capturedSpeech.push(u.text);
+        try { origSpeak(u); } catch (e) {}
+      };
+    }
+
+    // 1. Test speakTile (二条)
+    MahjongAudio.speakTile(10, 0); // 10 is 二条
+
+    // 2. Test speakAction (碰！杠！胡牌！自摸！)
+    MahjongAudio.speakAction('peng', 1);
+    MahjongAudio.speakAction('hu', 0);
+
+    // 3. Test speakPhrase (快捷短句)
+    MahjongAudio.speakPhrase('快点出牌啊，花儿都谢了！', 0);
+
+    // 4. Test emoji audio synthesis
+    MahjongAudio.playEmojiSound('🤑');
+    MahjongAudio.playEmojiSound('💣');
+
+    // 5. Test Settings modal voice toggle
+    const voiceBtn = document.getElementById('btnSettingsVoiceToggle');
+    const origVoiceMuted = MahjongAudio.voiceMuted;
+    if (voiceBtn) voiceBtn.click();
+    const toggledMuted = MahjongAudio.voiceMuted;
+    if (voiceBtn) voiceBtn.click(); // restore
+
+    return {
+      capturedSpeech,
+      hasVoiceBtn: !!voiceBtn,
+      toggleWorks: toggledMuted !== origVoiceMuted
+    };
+  });
+
+  console.log(`- Captured Speech Utterances: ${JSON.stringify(test10Results.capturedSpeech)}`);
+  console.log(`- Includes '二条' for tile 10: ${test10Results.capturedSpeech.includes('二条')}`);
+  console.log(`- Includes '碰！' and '胡牌！': ${test10Results.capturedSpeech.includes('碰！') && test10Results.capturedSpeech.includes('胡牌！')}`);
+  console.log(`- Includes quick phrase: ${test10Results.capturedSpeech.some(s => s.includes('快点出牌'))}`);
+  console.log(`- Settings voice toggle button present and operational: ${test10Results.hasVoiceBtn && test10Results.toggleWorks}`);
+
+  if (!test10Results.capturedSpeech.includes('二条')) {
+    throw new Error('Test 10 failed: speakTile did not output 二条!');
+  }
+
   // FINALIZE
   console.log('\n--- TEST SUMMARY ---');
   console.log(`Console Errors: ${consoleErrors.length}`);

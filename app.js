@@ -447,12 +447,14 @@
     p.forbiddenDiscard = null; // 出牌后解除吃牌禁打限制！
 
     Audio.playTileDrop();
+    Audio.speakTile(dTile, pIdx);
     render();
     scheduleSync();
 
+    showSpeechBubble(pIdx, Engine.tileName(dTile));
+
     // If a bot discarded, give human player clear announcement and 1.6s to observe the tile
     if (p.isBot) {
-      showSpeechBubble(pIdx, '打出 ' + Engine.tileName(dTile));
       showToast(p.name + ' 打出【' + Engine.tileName(dTile) + '】');
       await sleep(1600);
     }
@@ -517,8 +519,11 @@
     S.lastDeltas = deltas;
     S.history.push({ round: S.round, label: S.players[pIdx].name + ' ' + label, deltas: deltas.slice() });
 
-    showVFX(label.indexOf('花') >= 0 ? '花杠' : '杠');
+    var actWord = label.indexOf('花') >= 0 ? '花杠' : '杠';
+    showVFX(actWord);
     Audio.playGang();
+    Audio.speakAction(actWord, pIdx);
+    showSpeechBubble(pIdx, actWord + '！');
     showToast(S.players[pIdx].name + ' ' + label + '，每家给 ' + perPlayer + ' 分');
     render();
     scheduleSync();
@@ -611,6 +616,8 @@
         settleInstant(gs, 2, '明杠');
         showVFX('杠');
         Audio.playGang();
+        Audio.speakAction('杠', gs);
+        showSpeechBubble(gs, '杠！');
         scheduleSync();
         return { next: gs, skip: 'kong' };
       }
@@ -627,6 +634,8 @@
         pp.justPeng = true;
         showVFX('碰');
         Audio.playPeng();
+        Audio.speakAction('碰', ps);
+        showSpeechBubble(ps, '碰！');
         scheduleSync();
         return { next: ps, skip: true };
       }
@@ -648,6 +657,8 @@
         cp.forbiddenDiscard = tile;
         showVFX('吃');
         Audio.playChi();
+        Audio.speakAction('吃', cs);
+        showSpeechBubble(cs, '吃！');
         scheduleSync();
         return { next: cs, skip: true };
       }
@@ -1168,6 +1179,8 @@
       }
       showVFX('自摸！');
       Audio.playZimo();
+      Audio.speakAction('自摸', winnerSeat);
+      showSpeechBubble(winnerSeat, '自摸！');
       showToast('🎉 ' + winName + ' 自摸胡牌！');
     } else {
       deltas[loserSeat] -= 4;
@@ -1180,6 +1193,8 @@
       }
       showVFX('胡牌！');
       Audio.playHu();
+      Audio.speakAction('胡牌', winnerSeat);
+      showSpeechBubble(winnerSeat, '胡牌！');
       showToast('🎉 ' + winName + ' 胡牌！由 ' + S.players[loserSeat].name + ' 点炮');
     }
 
@@ -2057,6 +2072,22 @@
       Audio.playButton();
     });
 
+    // Voice Speech Toggle (真人语音报牌与短句开关)
+    var btnSettingsVoice = document.getElementById('btnSettingsVoiceToggle');
+    function syncVoiceDisplay() {
+      if (btnSettingsVoice) {
+        btnSettingsVoice.textContent = Audio.voiceMuted ? '🔇 关闭' : '🗣️ 开启';
+      }
+    }
+    syncVoiceDisplay();
+    if (btnSettingsVoice) {
+      btnSettingsVoice.addEventListener('click', function() {
+        Audio.voiceMuted = !Audio.voiceMuted;
+        syncVoiceDisplay();
+        Audio.playButton();
+      });
+    }
+
     // BGM (Background Music) Controls
     var btnBgm = document.getElementById('btnBgmToggle');
     var btnSettingsBgm = document.getElementById('btnSettingsBgmToggle');
@@ -2171,6 +2202,7 @@
         var text = this.textContent;
         chatPopup.classList.remove('show');
         showSpeechBubble(ME, text);
+        Audio.speakPhrase(text, ME);
         if (MODE !== 'single') {
           Network.sendChat('phrase', text, S.players[ME].name, ME);
         }
@@ -2182,6 +2214,7 @@
         var emoji = this.textContent;
         chatPopup.classList.remove('show');
         showSpeechBubble(ME, emoji);
+        Audio.playEmojiSound(emoji);
         if (MODE !== 'single') {
           Network.sendChat('emoji', emoji, S.players[ME].name, ME);
         }
@@ -2445,6 +2478,11 @@
       },
       onChatReceived: function(msg) {
         showSpeechBubble(msg.seat, msg.content);
+        if (msg.type === 'phrase') {
+          Audio.speakPhrase(msg.content, msg.seat);
+        } else if (msg.type === 'emoji') {
+          Audio.playEmojiSound(msg.content);
+        }
       },
       onGameStarted: function() {
         hideModal('modalLobby');

@@ -7,6 +7,35 @@
 
   var audioCtx = null;
   var isMuted = false;
+  var isVoiceMuted = false;
+  var chineseVoice = null;
+
+  function updateChineseVoice() {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      var voices = window.speechSynthesis.getVoices();
+      if (!voices || voices.length === 0) return;
+      var zhVoices = voices.filter(function(v) {
+        return v.lang && (v.lang.toLowerCase().indexOf('zh') === 0 || v.lang.toLowerCase().indexOf('cmn') === 0);
+      });
+      if (zhVoices.length > 0) {
+        var cnVoice = zhVoices.find(function(v) {
+          var l = v.lang.toLowerCase();
+          return l.indexOf('cn') !== -1 || l.indexOf('hans') !== -1 || l === 'zh_cn' || l === 'zh-cn';
+        });
+        chineseVoice = cnVoice || zhVoices[0];
+      }
+    } catch (e) {}
+  }
+
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    try {
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = updateChineseVoice;
+      }
+      updateChineseVoice();
+    } catch (e) {}
+  }
 
   var isBgmMuted = false;
   var bgmVolume = 0.35;
@@ -146,6 +175,13 @@
     if (!MahjongAudio.bgmMuted) {
       MahjongAudio.startBGM();
     }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        var dummy = new SpeechSynthesisUtterance('');
+        dummy.volume = 0;
+        window.speechSynthesis.speak(dummy);
+      } catch (e) {}
+    }
     window.removeEventListener('touchstart', unlockAudio);
     window.removeEventListener('click', unlockAudio);
   }
@@ -161,6 +197,22 @@
       try {
         localStorage.setItem('mj_muted', isMuted ? '1' : '0');
       } catch (e) {}
+      if (isMuted && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        try { window.speechSynthesis.cancel(); } catch (e) {}
+      }
+    },
+
+    get voiceMuted() {
+      return isVoiceMuted;
+    },
+    set voiceMuted(val) {
+      isVoiceMuted = !!val;
+      try {
+        localStorage.setItem('mj_voice_muted', isVoiceMuted ? '1' : '0');
+      } catch (e) {}
+      if (isVoiceMuted && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        try { window.speechSynthesis.cancel(); } catch (e) {}
+      }
     },
 
     get bgmMuted() {
@@ -228,6 +280,7 @@
       try {
         isMuted = (localStorage.getItem('mj_muted') === '1');
         isBgmMuted = (localStorage.getItem('mj_bgm_muted') === '1');
+        isVoiceMuted = (localStorage.getItem('mj_voice_muted') === '1');
         var v = localStorage.getItem('mj_bgm_vol');
         if (v !== null) bgmVolume = parseFloat(v) || 0.35;
       } catch (e) {}
@@ -449,6 +502,243 @@
       gain.connect(ctx.destination);
       osc.start(now);
       osc.stop(now + 0.04);
+    },
+
+    // 10. Voice Speech Synthesis (真人语音报牌、碰杠胡、快捷短句)
+    speak: function(text, seat, customOpts) {
+      if (isMuted || isVoiceMuted) return;
+      if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+      if (!text) return;
+
+      try {
+        if (!chineseVoice) updateChineseVoice();
+
+        // Cancel previous utterance if specified to ensure prompt timing
+        if (!customOpts || customOpts.cancelPrevious !== false) {
+          window.speechSynthesis.cancel();
+        }
+
+        var u = new SpeechSynthesisUtterance(text);
+        u.lang = (chineseVoice && chineseVoice.lang) ? chineseVoice.lang : 'zh-CN';
+        if (chineseVoice) u.voice = chineseVoice;
+
+        // Distinct pitch and pacing based on seat to differentiate players at the table
+        var SEAT_VOICES = [
+          { pitch: 1.05, rate: 1.15 }, // Seat 0 (自己: 自然清脆)
+          { pitch: 0.88, rate: 1.12 }, // Seat 1 (雀神阿强: 沉稳男声)
+          { pitch: 1.25, rate: 1.18 }, // Seat 2 (干王小美: 甜美女声)
+          { pitch: 0.98, rate: 1.14 }  // Seat 3 (德帅老十: 儒雅男声)
+        ];
+
+        var sIdx = (seat !== undefined && seat !== null ? seat : 0) % 4;
+        var seatCfg = SEAT_VOICES[sIdx];
+
+        u.pitch = (customOpts && customOpts.pitch !== undefined) ? customOpts.pitch : seatCfg.pitch;
+        u.rate = (customOpts && customOpts.rate !== undefined) ? customOpts.rate : seatCfg.rate;
+        u.volume = (customOpts && customOpts.volume !== undefined) ? customOpts.volume : 1.0;
+
+        window.speechSynthesis.speak(u);
+      } catch (e) {
+        console.warn('SpeechSynthesis error:', e);
+      }
+    },
+
+    // 语音报牌（例如打二条 -> "二条" / "2条"）
+    speakTile: function(tile, seat) {
+      var TILE_SPOKEN_NAMES = [
+        // 0-8: 万子
+        '一万', '二万', '三万', '四万', '五万', '六万', '七万', '八万', '九万',
+        // 9-17: 条子 (用户明确要求：打二条 就会说2条/二条)
+        '一条', '二条', '三条', '四条', '五条', '六条', '七条', '八条', '九条',
+        // 18-26: 筒子
+        '一筒', '二筒', '三筒', '四筒', '五筒', '六筒', '七筒', '八筒', '九筒',
+        // 27-33: 字牌
+        '东风', '南风', '西风', '北风', '红中', '发财', '白板',
+        // 34: 飞牌 (百搭牌)
+        '飞牌',
+        // 35-42: 花牌
+        '春', '夏', '秋', '冬', '梅', '兰', '竹', '菊'
+      ];
+      if (tile >= 0 && tile < TILE_SPOKEN_NAMES.length) {
+        this.speak(TILE_SPOKEN_NAMES[tile], seat, { rate: 1.16 });
+      }
+    },
+
+    // 动作报语音（碰！杠！吃！胡牌！自摸！花杠！）
+    speakAction: function(action, seat) {
+      var map = {
+        'peng': '碰！', '碰': '碰！',
+        'gang': '杠！', '杠': '杠！', '明杠': '杠！', '暗杠': '杠！',
+        'chi': '吃！', '吃': '吃！',
+        'hu': '胡牌！', '胡': '胡牌！', '胡牌': '胡牌！',
+        'zimo': '自摸！', '自摸': '自摸！',
+        'flower': '花杠！', '花杠': '花杠！'
+      };
+      var text = map[action] || (action + '！');
+      this.speak(text, seat, { rate: 1.25, volume: 1.0 });
+    },
+
+    // 快捷短句语音播报
+    speakPhrase: function(phrase, seat) {
+      if (!phrase) return;
+      // 过滤表情符号以获取纯净清晰的文字发音
+      var cleanText = phrase.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '').trim();
+      if (cleanText) {
+        this.speak(cleanText, seat, { rate: 1.12, volume: 1.0, cancelPrevious: true });
+      }
+    },
+
+    // 11. 互动表情音效合成器 (Web Audio API)
+    playCoinSound: function() {
+      if (isMuted) return;
+      var ctx = getAudioContext();
+      if (!ctx) return;
+      var now = ctx.currentTime;
+      [1760, 2637, 3520].forEach(function(freq, i) {
+        var t = now + i * 0.05;
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.25, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.19);
+      });
+    },
+
+    playBombSound: function() {
+      if (isMuted) return;
+      var ctx = getAudioContext();
+      if (!ctx) return;
+      var now = ctx.currentTime;
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(28, now + 0.45);
+      gain.gain.setValueAtTime(0.6, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.46);
+    },
+
+    playFireSound: function() {
+      if (isMuted) return;
+      var ctx = getAudioContext();
+      if (!ctx) return;
+      var now = ctx.currentTime;
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      var filter = ctx.createBiquadFilter();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(600, now);
+      osc.frequency.exponentialRampToValueAtTime(150, now + 0.3);
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(800, now);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.31);
+    },
+
+    playTeaSound: function() {
+      if (isMuted) return;
+      var ctx = getAudioContext();
+      if (!ctx) return;
+      var now = ctx.currentTime;
+      [880, 1320].forEach(function(freq, i) {
+        var t = now + i * 0.08;
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.2, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.23);
+      });
+    },
+
+    playLaughSound: function() {
+      if (isMuted) return;
+      var ctx = getAudioContext();
+      if (!ctx) return;
+      var now = ctx.currentTime;
+      [523.25, 659.25, 783.99, 659.25, 783.99].forEach(function(freq, i) {
+        var t = now + i * 0.07;
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.22, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.095);
+      });
+    },
+
+    playThumbsSound: function() {
+      if (isMuted) return;
+      var ctx = getAudioContext();
+      if (!ctx) return;
+      var now = ctx.currentTime;
+      [783.99, 1046.50].forEach(function(freq, i) {
+        var t = now + i * 0.09;
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.3, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.26);
+      });
+    },
+
+    playCrownSound: function() {
+      if (isMuted) return;
+      var ctx = getAudioContext();
+      if (!ctx) return;
+      var now = ctx.currentTime;
+      [523.25, 659.25, 783.99, 1046.50].forEach(function(freq, i) {
+        var t = now + i * 0.08;
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.35, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.36);
+      });
+    },
+
+    playEmojiSound: function(emoji) {
+      if (!emoji) return;
+      if (emoji.indexOf('🤑') !== -1) this.playCoinSound();
+      else if (emoji.indexOf('💣') !== -1) this.playBombSound();
+      else if (emoji.indexOf('🔥') !== -1) this.playFireSound();
+      else if (emoji.indexOf('☕') !== -1) this.playTeaSound();
+      else if (emoji.indexOf('😂') !== -1) this.playLaughSound();
+      else if (emoji.indexOf('👍') !== -1) this.playThumbsSound();
+      else if (emoji.indexOf('👑') !== -1) this.playCrownSound();
+      else this.playTileClick();
     }
   };
 
