@@ -37,52 +37,193 @@
     return 'zi';
   }
 
-  /* ================= Enhanced SVG Tile Faces ================= */
-  var SERIF = "KaiTi,STKaiti,'Kaiti SC','SimSun',serif";
+  /* ================= Traditional Authentic Tile Art (Matching Reference Set) ================= */
+  var NAVY = '#1b2d69';   // Traditional cobalt / navy blue
+  var RED = '#c0392b';    // Vermilion / crimson red
+  var GREEN = '#1b7a43';  // Jade green
+  var GOLD = '#d4af37';   // Imperial gold
+  var SERIF = "'KaiTi', 'STKaiti', 'Kaiti SC', 'SimSun', serif";
 
-  function dotSVG(x, y, r, color) {
-    return '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + color + '"/>' +
-      '<circle cx="' + x + '" cy="' + y + '" r="' + (r * 0.62).toFixed(1) + '" fill="#fdfaf2"/>' +
-      '<circle cx="' + x + '" cy="' + y + '" r="' + (r * 0.3).toFixed(1) + '" fill="' + color + '"/>';
+  // Concentric target dot for 筒子 (Pins / Dots)
+  function concentricDot(x, y, r, color) {
+    var r1 = r;
+    var r2 = (r * 0.58).toFixed(1);
+    var r3 = (r * 0.25).toFixed(1);
+    var sw1 = (r * 0.28).toFixed(1);
+    var sw2 = (r * 0.16).toFixed(1);
+    return '<circle cx="' + x + '" cy="' + y + '" r="' + r1 + '" fill="none" stroke="' + color + '" stroke-width="' + sw1 + '"/>' +
+      '<circle cx="' + x + '" cy="' + y + '" r="' + r2 + '" fill="none" stroke="' + color + '" stroke-width="' + sw2 + '"/>' +
+      '<circle cx="' + x + '" cy="' + y + '" r="' + r3 + '" fill="' + color + '"/>';
   }
 
-  function stickInner(color) {
-    return '<rect x="-3.2" y="-6.6" width="6.4" height="13.2" rx="3.1" fill="' + color + '"/>' +
-      '<rect x="-3.2" y="-1.1" width="6.4" height="2.2" fill="rgba(0,0,0,.18)"/>' +
-      '<rect x="-1.7" y="-5.6" width="1.7" height="11.2" rx=".85" fill="rgba(255,255,255,.45)"/>';
+  // 1筒: Ornate concentric rosette mandala
+  function rosette1Tong() {
+    return '<g transform="translate(20,28)">' +
+      '<circle cx="0" cy="0" r="14.8" fill="none" stroke="' + GREEN + '" stroke-width="2.2"/>' +
+      '<circle cx="0" cy="0" r="13.2" fill="none" stroke="' + GREEN + '" stroke-width="0.8" stroke-dasharray="2 1.4"/>' +
+      '<circle cx="0" cy="0" r="10.2" fill="none" stroke="' + RED + '" stroke-width="2.6"/>' +
+      '<circle cx="0" cy="0" r="8.2" fill="none" stroke="' + RED + '" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>' +
+      '<circle cx="0" cy="0" r="5.6" fill="none" stroke="' + GREEN + '" stroke-width="1.8"/>' +
+      '<circle cx="0" cy="0" r="3.2" fill="' + RED + '"/>' +
+      '<circle cx="0" cy="0" r="1.2" fill="#ffffff"/>' +
+      '</g>';
   }
 
-  function stickSVG(x, y, color, s) {
-    return '<g transform="translate(' + x + ',' + y + ') scale(' + (s || 1) + ')">' + stickInner(color) + '</g>';
+  // Notched authentic bamboo stick for 条子 (Bamboos)
+  function bambooStick(x, y, color, scale, angle) {
+    var tr = 'translate(' + x + ',' + y + ')';
+    if (scale && scale !== 1) tr += ' scale(' + scale + ')';
+    if (angle) tr += ' rotate(' + angle + ')';
+    return '<g transform="' + tr + '">' +
+      '<path d="M-2.2 -6.2 C-2.4 -4.5, -2.8 -2.2, -1.8 -0.6 C-1.3 0, -1.3 0, -1.8 0.6 C-2.8 2.2, -2.4 4.5, -2.2 6.2 C-1.3 7, 1.3 7, 2.2 6.2 C2.4 4.5, 2.8 2.2, 1.8 0.6 C1.3 0, 1.3 0, 1.8 -0.6 C2.8 -2.2, 2.4 -4.5, 2.2 -6.2 C1.3 -7, -1.3 -7, -2.2 -6.2 Z" fill="' + color + '"/>' +
+      '<line x1="-1.8" y1="0" x2="1.8" y2="0" stroke="rgba(0,0,0,0.3)" stroke-width="0.8"/>' +
+      '<line x1="-0.7" y1="-5.5" x2="-0.7" y2="5.5" stroke="rgba(255,255,255,0.45)" stroke-width="0.7"/>' +
+      '</g>';
   }
 
-  function posFor(n) {
-    switch (n) {
-      case 1: return [[20, 28]];
-      case 2: return [[13, 15], [27, 41]];
-      case 3: return [[11, 13], [20, 28], [29, 43]];
-      case 4: return [[12, 15], [28, 15], [12, 41], [28, 41]];
-      case 5: return [[12, 14], [28, 14], [20, 28], [12, 42], [28, 42]];
-      case 6: return [[12, 12], [28, 12], [12, 28], [28, 28], [12, 44], [28, 44]];
-      case 7: return [[10, 10], [20, 14], [30, 18], [12, 32], [28, 32], [12, 46], [28, 46]];
-      case 8: return [[12, 10], [28, 10], [12, 22], [28, 22], [12, 34], [28, 34], [12, 46], [28, 46]];
-      case 9: return [[11, 12], [20, 12], [29, 12], [11, 28], [20, 28], [29, 28], [11, 44], [20, 44], [29, 44]];
+  // 1条: Authentic Chinese Sparrow / Peacock (幺鸡)
+  function bird1Tiao() {
+    return '<g transform="translate(20, 27) scale(0.92)">' +
+      // Branch perch
+      '<path d="M -15 10 L 15 10" stroke="' + GREEN + '" stroke-width="2.4" stroke-linecap="round"/>' +
+      '<line x1="-8" y1="10" x2="-6" y2="13" stroke="' + GREEN + '" stroke-width="1.5"/>' +
+      // Red feet
+      '<line x1="-3" y1="5" x2="-5" y2="10" stroke="' + RED + '" stroke-width="1.8"/>' +
+      '<line x1="2" y1="5" x2="4" y2="10" stroke="' + RED + '" stroke-width="1.8"/>' +
+      // Long sweeping tail feathers
+      '<path d="M -2 7 C -7 14, -13 18, -14 24 C -11 21, -6 16, 0 8" fill="' + GREEN + '"/>' +
+      '<path d="M 1 6 C 0 14, 2 20, 3 25 C 2 19, 2 13, 3 7" fill="' + NAVY + '"/>' +
+      '<path d="M -7 18 C -11 22, -14 25, -15 26 C -12 24, -8 20, -5 16" fill="' + RED + '"/>' +
+      // Breast & body
+      '<path d="M -7 -4 C -8 3, -4 7, 1 7 C 6 7, 9 3, 7 -4 Z" fill="' + NAVY + '"/>' +
+      '<path d="M -6 -1 C -3 2, 2 3, 6 0" fill="none" stroke="#ffffff" stroke-width="1.2"/>' +
+      '<path d="M -5 3 C -2 5, 2 5, 5 3" fill="none" stroke="#ffffff" stroke-width="1.2"/>' +
+      // Green wing back
+      '<path d="M -1 -6 C 6 -8, 12 -4, 10 3 C 8 8, 3 8, 0 5 Z" fill="' + GREEN + '"/>' +
+      '<path d="M 2 -3 C 6 -3, 8 0, 7 4" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>' +
+      // Head & eye
+      '<circle cx="-4" cy="-8" r="4.5" fill="' + NAVY + '"/>' +
+      '<circle cx="-5.5" cy="-8.5" r="1.3" fill="#ffffff"/>' +
+      '<circle cx="-5.8" cy="-8.5" r="0.6" fill="#000000"/>' +
+      // Red beak
+      '<polygon points="-8,-9.5 -13,-8 -8,-6.5" fill="' + RED + '"/>' +
+      // Red comb
+      '<path d="M -3 -12 C -5 -15, -8 -13, -7 -10 C -8 -10, -9 -11, -8 -9 Z" fill="' + RED + '"/>' +
+      '</g>';
+  }
+
+  // 8条: Authentic M-shape curved bamboo shoots (青八条)
+  function stems8Tiao() {
+    return (
+      // Top M
+      bambooStick(10.5, 18, GREEN, 0.82, 28) +
+      bambooStick(17, 13, GREEN, 0.82, -28) +
+      bambooStick(23, 13, GREEN, 0.82, 28) +
+      bambooStick(29.5, 18, GREEN, 0.82, -28) +
+      // Bottom M
+      bambooStick(10.5, 39, GREEN, 0.82, 28) +
+      bambooStick(17, 34, GREEN, 0.82, -28) +
+      bambooStick(23, 34, GREEN, 0.82, 28) +
+      bambooStick(29.5, 39, GREEN, 0.82, -28)
+    );
+  }
+
+  // Flower / Season Tile SVG (35 - 42)
+  function flowerTileSVG(t) {
+    var idx = t - 35; // 0 to 7
+    var names = ['春', '夏', '秋', '冬', '梅', '兰', '竹', '菊'];
+    var numChars = ['一', '二', '三', '四', '1', '2', '3', '4'];
+    var name = names[idx];
+    var num = numChars[idx];
+    var isSeason = idx < 4;
+    var badgeCol = isSeason ? RED : NAVY;
+
+    var out = '';
+    // Top Numeral & Name Badge
+    out += '<text x="9" y="14" font-size="12" font-weight="900" fill="' + badgeCol + '" font-family="' + SERIF + '">' + num + '</text>';
+    out += '<rect x="23" y="5" width="13" height="12" rx="3" fill="' + badgeCol + '" opacity="0.12"/>';
+    out += '<text x="29.5" y="14.5" text-anchor="middle" font-size="9.5" font-weight="bold" fill="' + badgeCol + '" font-family="' + SERIF + '">' + name + '</text>';
+
+    // Beautiful Botanical Illustration in Center
+    if (idx === 0) { // 春 (Spring Plum)
+      out += '<g transform="translate(20,35)">' +
+        '<path d="M -6 16 Q -2 4 4 -6 Q 6 -10 10 -14" stroke="' + NAVY + '" stroke-width="1.8" fill="none" stroke-linecap="round"/>' +
+        '<circle cx="-2" cy="2" r="4.5" fill="' + RED + '"/>' +
+        '<circle cx="-2" cy="2" r="1.5" fill="#f5cd79"/>' +
+        '<circle cx="6" cy="-4" r="3.6" fill="' + RED + '"/>' +
+        '<circle cx="6" cy="-4" r="1.2" fill="#f5cd79"/>' +
+        '<path d="M 2 8 Q 8 6 10 0" stroke="' + GREEN + '" stroke-width="1.5" fill="none"/>' +
+        '</g>';
+    } else if (idx === 1) { // 夏 (Summer Lotus)
+      out += '<g transform="translate(20,35)">' +
+        '<path d="M 0 16 L 0 -2" stroke="' + GREEN + '" stroke-width="2" stroke-linecap="round"/>' +
+        '<path d="M 0 -2 C -7 -6, -9 -14, 0 -16 C 9 -14, 7 -6, 0 -2 Z" fill="' + RED + '"/>' +
+        '<path d="M -4 -4 C -11 -6, -11 -12, -4 -13" fill="none" stroke="' + RED + '" stroke-width="1.5"/>' +
+        '<path d="M 4 -4 C 11 -6, 11 -12, 4 -13" fill="none" stroke="' + RED + '" stroke-width="1.5"/>' +
+        '<ellipse cx="-6" cy="10" rx="6" ry="2.5" fill="' + GREEN + '"/>' +
+        '</g>';
+    } else if (idx === 2) { // 秋 (Autumn Chrysanthemum)
+      out += '<g transform="translate(20,35)">' +
+        '<path d="M 0 16 Q -4 6 2 -2" stroke="' + NAVY + '" stroke-width="1.8" fill="none"/>' +
+        '<circle cx="2" cy="-6" r="7" fill="' + RED + '"/>' +
+        '<circle cx="2" cy="-6" r="4.5" fill="#e67e22"/>' +
+        '<circle cx="2" cy="-6" r="2.2" fill="#f1c40f"/>' +
+        '<path d="M -2 6 C -8 4, -8 0, -4 0" fill="' + GREEN + '"/>' +
+        '<path d="M 3 4 C 9 2, 9 -2, 5 -2" fill="' + GREEN + '"/>' +
+        '</g>';
+    } else if (idx === 3) { // 冬 (Winter Pine / Bamboo)
+      out += '<g transform="translate(20,35)">' +
+        '<path d="M -4 16 L -4 -12" stroke="' + GREEN + '" stroke-width="2.5" stroke-linecap="round"/>' +
+        '<path d="M 5 16 L 5 -8" stroke="' + GREEN + '" stroke-width="2" stroke-linecap="round"/>' +
+        '<path d="M -4 4 Q -12 2 -10 -4" stroke="' + GREEN + '" stroke-width="1.5" fill="none"/>' +
+        '<path d="M -4 -4 Q -12 -6 -10 -12" stroke="' + GREEN + '" stroke-width="1.5" fill="none"/>' +
+        '<path d="M 5 2 Q 13 0 11 -6" stroke="' + GREEN + '" stroke-width="1.5" fill="none"/>' +
+        '</g>';
+    } else if (idx === 4) { // 梅 (Plum Flower)
+      out += '<g transform="translate(20,35)">' +
+        '<path d="M -8 16 Q 0 4 6 -8" stroke="' + NAVY + '" stroke-width="1.8" fill="none" stroke-linecap="round"/>' +
+        '<circle cx="4" cy="-8" r="5" fill="' + RED + '"/>' +
+        '<circle cx="-3" cy="2" r="4.2" fill="' + RED + '"/>' +
+        '<circle cx="4" cy="-8" r="1.5" fill="#ffd32a"/>' +
+        '<circle cx="-3" cy="2" r="1.3" fill="#ffd32a"/>' +
+        '<path d="M 3 6 Q 10 4 8 -1" stroke="' + GREEN + '" stroke-width="1.5" fill="none"/>' +
+        '</g>';
+    } else if (idx === 5) { // 兰 (Orchid)
+      out += '<g transform="translate(20,35)">' +
+        '<path d="M -6 16 Q -2 6 2 -2" stroke="' + GREEN + '" stroke-width="1.8" fill="none"/>' +
+        '<path d="M 2 -2 C -5 -6, -6 -14, 2 -16 C 10 -14, 9 -6, 2 -2 Z" fill="' + NAVY + '"/>' +
+        '<circle cx="2" cy="-9" r="2" fill="' + RED + '"/>' +
+        '<path d="M -8 16 C -12 6, -6 -6, 2 -8" stroke="' + GREEN + '" stroke-width="1.4" fill="none"/>' +
+        '<path d="M -2 16 C 8 8, 12 -2, 8 -12" stroke="' + GREEN + '" stroke-width="1.4" fill="none"/>' +
+        '</g>';
+    } else if (idx === 6) { // 竹 (Bamboo)
+      out += '<g transform="translate(20,35)">' +
+        '<path d="M -3 16 L -3 -14" stroke="' + GREEN + '" stroke-width="2.6" stroke-linecap="round"/>' +
+        '<line x1="-5" y1="2" x2="-1" y2="2" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>' +
+        '<line x1="-5" y1="-6" x2="-1" y2="-6" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>' +
+        '<path d="M 5 16 L 5 -6" stroke="' + GREEN + '" stroke-width="2" stroke-linecap="round"/>' +
+        '<path d="M -3 -6 Q -11 -8 -10 -14 Q -6 -10 -3 -7" fill="' + GREEN + '"/>' +
+        '<path d="M -3 2 Q -11 0 -9 -6 Q -5 -2 -3 1" fill="' + GREEN + '"/>' +
+        '<path d="M 5 2 Q 13 0 11 -6 Q 7 -2 5 1" fill="' + GREEN + '"/>' +
+        '</g>';
+    } else if (idx === 7) { // 菊 (Chrysanthemum)
+      out += '<g transform="translate(20,35)">' +
+        '<path d="M 0 16 L 0 4" stroke="' + GREEN + '" stroke-width="2"/>' +
+        '<circle cx="0" cy="-4" r="8" fill="' + RED + '"/>' +
+        '<circle cx="0" cy="-4" r="5.5" fill="#f39c12"/>' +
+        '<circle cx="0" cy="-4" r="3" fill="#f1c40f"/>' +
+        '<path d="M -2 10 C -8 8, -9 2, -4 4" fill="' + GREEN + '"/>' +
+        '<path d="M 2 8 C 8 6, 9 0, 4 2" fill="' + GREEN + '"/>' +
+        '</g>';
     }
-    return [[20, 28]];
-  }
 
-  var DOT_COLORS = {
-    2: ['#1f4e9c', '#178a4c'],
-    3: ['#1f4e9c', '#cf2e1f', '#178a4c'],
-    4: ['#1f4e9c', '#178a4c', '#178a4c', '#1f4e9c'],
-    5: ['#1f4e9c', '#178a4c', '#cf2e1f', '#178a4c', '#1f4e9c'],
-    6: ['#178a4c', '#178a4c', '#1f4e9c', '#1f4e9c', '#cf2e1f', '#cf2e1f'],
-    7: ['#178a4c', '#178a4c', '#178a4c', '#1f4e9c', '#1f4e9c', '#1f4e9c', '#1f4e9c'],
-    9: ['#178a4c', '#178a4c', '#178a4c', '#cf2e1f', '#cf2e1f', '#cf2e1f', '#1f4e9c', '#1f4e9c', '#1f4e9c']
-  };
+    return out;
+  }
 
   function faceSVG(t) {
     var s = '<svg viewBox="0 0 40 56" class="tile-face-svg" aria-hidden="true">';
+
+    // 1. 飞牌 (Wild Tile - 34)
     if (t === WILD) {
       return s +
         '<defs>' +
@@ -90,67 +231,153 @@
         '<stop offset="0%" stop-color="#fff099"/><stop offset="50%" stop-color="#e5a91e"/><stop offset="100%" stop-color="#9e6d04"/>' +
         '</linearGradient>' +
         '</defs>' +
-        '<rect x="2" y="2" width="36" height="52" rx="3" fill="none" stroke="url(#goldGrad)" stroke-width="1.5" stroke-dasharray="3 1.5"/>' +
-        '<text x="20" y="36" text-anchor="middle" font-size="27" font-weight="900" fill="#cf2e1f" font-family="' + SERIF + '">飛</text>' +
+        '<rect x="2" y="2" width="36" height="52" rx="3.5" fill="none" stroke="url(#goldGrad)" stroke-width="1.6" stroke-dasharray="3 1.5"/>' +
+        '<text x="20" y="36" text-anchor="middle" font-size="28" font-weight="900" fill="' + RED + '" font-family="' + SERIF + '">飛</text>' +
         '<rect x="8" y="42" width="24" height="9" rx="4.5" fill="#f5c242"/>' +
-        '<text x="20" y="49" text-anchor="middle" font-size="7" font-weight="bold" fill="#5c3800">万能</text>' +
+        '<text x="20" y="49" text-anchor="middle" font-size="7.5" font-weight="900" fill="#5c3800">万能</text>' +
         '</svg>';
     }
+
+    // 2. 花牌 (Flowers - 35 to 42)
     if (isFlower(t)) {
-      var col = FLOWER_COLORS[t - 35];
-      return s +
-        '<text x="20" y="32" text-anchor="middle" font-size="22" font-weight="bold" fill="' + col + '" font-family="' + SERIF + '">' + FLOWER_NAMES[t - 35] + '</text>' +
-        '<path d="M20 38 Q16 43 13 47 M20 38 Q24 43 27 47" stroke="#178a4c" stroke-width="2" fill="none" stroke-linecap="round"/>' +
-        '<text x="20" y="52" text-anchor="middle" font-size="8" font-weight="bold" fill="' + col + '">花</text></svg>';
+      return s + flowerTileSVG(t) + '</svg>';
     }
-    if (t < 9) { // 万
+
+    // 3. 万子 (Wan - 0 to 8)
+    if (t < 9) {
+      var wanNum = ['一', '二', '三', '四', '伍', '六', '七', '八', '九'][t];
       return s +
-        '<text x="20" y="23" text-anchor="middle" font-size="16" font-weight="bold" fill="#1b306b" font-family="' + SERIF + '">' + CN_NUM[t] + '</text>' +
-        '<text x="20" y="47" text-anchor="middle" font-size="19" font-weight="bold" fill="#cf2e1f" font-family="' + SERIF + '">萬</text></svg>';
+        '<text x="20" y="24" text-anchor="middle" font-size="19" font-weight="900" fill="' + NAVY + '" font-family="' + SERIF + '">' + wanNum + '</text>' +
+        '<text x="20" y="47" text-anchor="middle" font-size="20" font-weight="900" fill="' + RED + '" font-family="' + SERIF + '">萬</text>' +
+        '</svg>';
     }
-    if (t < 18) { // 条
+
+    // 4. 条子 (Bamboo / Sou - 9 to 17)
+    if (t < 18) {
       var n = t - 8;
-      if (n === 1) { // 1条: 孔雀/神鸟图腾
+      if (n === 1) { // 1条: 幺鸡神鸟
+        return s + bird1Tiao() + '</svg>';
+      }
+      if (n === 2) {
+        return s + bambooStick(20, 17, GREEN) + bambooStick(20, 39, GREEN) + '</svg>';
+      }
+      if (n === 3) {
+        return s + bambooStick(20, 15, GREEN) + bambooStick(13, 38, GREEN) + bambooStick(27, 38, GREEN) + '</svg>';
+      }
+      if (n === 4) {
         return s +
-          '<path d="M14 14 q-6.5 -6.5 -12 -5.5 q3 6.5 9.5 7.5 Z" fill="#2fae5f"/>' +
-          '<path d="M26 14 q6.5 -6.5 12 -5.5 q-3 6.5 -9.5 7.5 Z" fill="#2fae5f"/>' +
-          '<g transform="translate(20,29) scale(1.85)">' + stickInner('#178a4c') + '</g>' +
-          '<circle cx="20" cy="18" r="3.2" fill="#cf2e1f"/>' +
+          bambooStick(13, 17, GREEN) + bambooStick(27, 17, GREEN) +
+          bambooStick(13, 39, GREEN) + bambooStick(27, 39, GREEN) +
           '</svg>';
       }
-      var pos = posFor(n);
-      var out = s;
-      for (var i = 0; i < pos.length; i++) {
-        var bc = ((n === 5 && i === 2) || (n === 9 && i === 4)) ? '#cf2e1f' : '#178a4c';
-        out += stickSVG(pos[i][0], pos[i][1], bc, n === 8 ? 0.82 : 1);
-      }
-      return out + '</svg>';
-    }
-    if (t < 27) { // 筒
-      var n2 = t - 17;
-      if (n2 === 1) {
+      if (n === 5) { // 4 green corners + 1 RED center
         return s +
-          '<circle cx="20" cy="28" r="13" fill="none" stroke="#178a4c" stroke-width="2.8"/>' +
-          '<circle cx="20" cy="28" r="9" fill="none" stroke="#cf2e1f" stroke-width="2.2"/>' +
-          '<circle cx="20" cy="28" r="5" fill="#1f4e9c"/><circle cx="20" cy="28" r="2.2" fill="#fdfaf2"/></svg>';
+          bambooStick(13, 16, GREEN) + bambooStick(27, 16, GREEN) +
+          bambooStick(20, 28, RED) +
+          bambooStick(13, 40, GREEN) + bambooStick(27, 40, GREEN) +
+          '</svg>';
       }
-      var pos2 = posFor(n2);
-      var cols = DOT_COLORS[n2] || ['#1f4e9c'];
-      var r = n2 === 8 ? 4.6 : (n2 === 7 ? 4.9 : 5.3);
-      var out2 = s;
-      for (var j = 0; j < pos2.length; j++) {
-        out2 += dotSVG(pos2[j][0], pos2[j][1], r, cols[j % cols.length]);
+      if (n === 6) { // 3 top green, 3 bottom green
+        return s +
+          bambooStick(12, 17, GREEN) + bambooStick(20, 17, GREEN) + bambooStick(28, 17, GREEN) +
+          bambooStick(12, 39, GREEN) + bambooStick(20, 39, GREEN) + bambooStick(28, 39, GREEN) +
+          '</svg>';
       }
-      return out2 + '</svg>';
+      if (n === 7) { // 1 RED top, 6 green below (3 middle, 3 bottom)
+        return s +
+          bambooStick(20, 13, RED) +
+          bambooStick(12, 28, GREEN) + bambooStick(20, 28, GREEN) + bambooStick(28, 28, GREEN) +
+          bambooStick(12, 43, GREEN) + bambooStick(20, 43, GREEN) + bambooStick(28, 43, GREEN) +
+          '</svg>';
+      }
+      if (n === 8) { // 两个 M 形双弯八条 (青八条)
+        return s + stems8Tiao() + '</svg>';
+      }
+      if (n === 9) { // 3 green left, 3 RED middle, 3 green right
+        return s +
+          bambooStick(12, 14, GREEN) + bambooStick(12, 28, GREEN) + bambooStick(12, 42, GREEN) +
+          bambooStick(20, 14, RED) + bambooStick(20, 28, RED) + bambooStick(20, 42, RED) +
+          bambooStick(28, 14, GREEN) + bambooStick(28, 28, GREEN) + bambooStick(28, 42, GREEN) +
+          '</svg>';
+      }
     }
-    // 字牌
+
+    // 5. 筒子 (Dots / Pin - 18 to 26)
+    if (t < 27) {
+      var n2 = t - 17;
+      if (n2 === 1) { // 1筒: 大饼曼陀罗同心圆
+        return s + rosette1Tong() + '</svg>';
+      }
+      if (n2 === 2) { // 2筒: 垂直绿+蓝
+        return s + concentricDot(20, 16, 6.4, GREEN) + concentricDot(20, 40, 6.4, NAVY) + '</svg>';
+      }
+      if (n2 === 3) { // 3筒: 对角绿、红、蓝
+        return s + concentricDot(11, 13, 5.2, GREEN) + concentricDot(20, 28, 5.2, RED) + concentricDot(29, 43, 5.2, NAVY) + '</svg>';
+      }
+      if (n2 === 4) { // 4筒: 蓝绿/绿蓝
+        return s +
+          concentricDot(13, 16, 5.2, NAVY) + concentricDot(27, 16, 5.2, GREEN) +
+          concentricDot(13, 40, 5.2, GREEN) + concentricDot(27, 40, 5.2, NAVY) +
+          '</svg>';
+      }
+      if (n2 === 5) { // 5筒: 4角 + 红中心
+        return s +
+          concentricDot(12, 15, 4.8, NAVY) + concentricDot(28, 15, 4.8, GREEN) +
+          concentricDot(20, 28, 5.8, RED) +
+          concentricDot(12, 41, 4.8, GREEN) + concentricDot(28, 41, 4.8, NAVY) +
+          '</svg>';
+      }
+      if (n2 === 6) { // 6筒: 上2绿，下4红
+        return s +
+          concentricDot(13, 14, 4.8, GREEN) + concentricDot(27, 14, 4.8, GREEN) +
+          concentricDot(13, 29, 4.8, RED) + concentricDot(27, 29, 4.8, RED) +
+          concentricDot(13, 43, 4.8, RED) + concentricDot(27, 43, 4.8, RED) +
+          '</svg>';
+      }
+      if (n2 === 7) { // 7筒: 上3斜绿，下4红
+        return s +
+          concentricDot(11, 12, 4.2, GREEN) + concentricDot(20, 17, 4.2, GREEN) + concentricDot(29, 22, 4.2, GREEN) +
+          concentricDot(13, 34, 4.5, RED) + concentricDot(27, 34, 4.5, RED) +
+          concentricDot(13, 46, 4.5, RED) + concentricDot(27, 46, 4.5, RED) +
+          '</svg>';
+      }
+      if (n2 === 8) { // 8筒: 全蓝 (2列各4)
+        return s +
+          concentricDot(13, 11, 4.2, NAVY) + concentricDot(13, 22, 4.2, NAVY) +
+          concentricDot(13, 33, 4.2, NAVY) + concentricDot(13, 44, 4.2, NAVY) +
+          concentricDot(27, 11, 4.2, NAVY) + concentricDot(27, 22, 4.2, NAVY) +
+          concentricDot(27, 33, 4.2, NAVY) + concentricDot(27, 44, 4.2, NAVY) +
+          '</svg>';
+      }
+      if (n2 === 9) { // 9筒: 上3绿，中3红，下3蓝
+        return s +
+          concentricDot(11, 13, 4.2, GREEN) + concentricDot(20, 13, 4.2, GREEN) + concentricDot(29, 13, 4.2, GREEN) +
+          concentricDot(11, 28, 4.2, RED) + concentricDot(20, 28, 4.2, RED) + concentricDot(29, 28, 4.2, RED) +
+          concentricDot(11, 43, 4.2, NAVY) + concentricDot(20, 43, 4.2, NAVY) + concentricDot(29, 43, 4.2, NAVY) +
+          '</svg>';
+      }
+    }
+
+    // 6. 字牌 (Honors - 27 to 33)
     var h = t - 27;
-    if (h === 6) { // 白板
-      return s + '<rect x="9" y="10" width="22" height="36" rx="3" fill="none" stroke="#1f4e9c" stroke-width="3"/></svg>';
+    // 31: 中 (红)
+    if (h === 4) {
+      return s + '<text x="20" y="38" text-anchor="middle" font-size="28" font-weight="900" fill="' + RED + '" font-family="' + SERIF + '">中</text></svg>';
     }
-    var hcol = h === 4 ? '#cf2e1f' : (h === 5 ? '#178a4c' : '#222222');
-    var hchar = h === 5 ? '發' : (h === 4 ? '中' : HONORS[h]);
-    return s + '<text x="20" y="38" text-anchor="middle" font-size="27" font-weight="bold" fill="' + hcol + '" font-family="' + SERIF + '">' + hchar + '</text></svg>';
+    // 32: 發 (绿)
+    if (h === 5) {
+      return s + '<text x="20" y="38" text-anchor="middle" font-size="28" font-weight="900" fill="' + GREEN + '" font-family="' + SERIF + '">發</text></svg>';
+    }
+    // 33: 白 / 白板 (深蓝双线框)
+    if (h === 6) {
+      return s +
+        '<rect x="8" y="9" width="24" height="38" rx="3.5" fill="none" stroke="' + NAVY + '" stroke-width="2"/>' +
+        '<rect x="11.5" y="12.5" width="17" height="31" rx="2" fill="none" stroke="' + NAVY + '" stroke-width="1"/>' +
+        '</svg>';
+    }
+    // 27: 東, 28: 南, 29: 西, 30: 北 (深蓝书法体)
+    var windChars = ['東', '南', '西', '北'];
+    return s + '<text x="20" y="38" text-anchor="middle" font-size="28" font-weight="900" fill="' + NAVY + '" font-family="' + SERIF + '">' + windChars[h] + '</text></svg>';
   }
 
   function tileHTML(t, extraClass) {

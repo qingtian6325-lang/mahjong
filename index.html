@@ -14,7 +14,7 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   <title>麻将大师 · 豪华翡翠雀台</title>
-  <link rel="stylesheet" href="./style.css?v=2.4.0" />
+  <link rel="stylesheet" href="./style.css?v=2.5.0" />
 </head>
 <body>
   <!-- Mobile Portrait Orientation Notice -->
@@ -291,7 +291,7 @@
             <button class="mode-mini-btn" id="btnModeQuickSfx">🔊 音效: 开</button>
             <button class="mode-mini-btn" id="btnModeQuickRules">📜 规则说明</button>
           </div>
-          <div class="mode-version-tip">v2.4.0 · 跨平台 iOS / Android / Web</div>
+          <div class="mode-version-tip">v2.5.0 · 跨平台 iOS / Android / Web</div>
         </div>
       </div>
     </div>
@@ -472,17 +472,17 @@
   <!-- Supabase Realtime SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Game Scripts -->
-  <script src="./audio.js?v=2.4.0"></script>
-  <script src="./engine.js?v=2.4.0"></script>
-  <script src="./network.js?v=2.4.0"></script>
-  <script src="./qr.js?v=2.4.0"></script>
-  <script src="./app.js?v=2.4.0"></script>
+  <script src="./audio.js?v=2.5.0"></script>
+  <script src="./engine.js?v=2.5.0"></script>
+  <script src="./network.js?v=2.5.0"></script>
+  <script src="./qr.js?v=2.5.0"></script>
+  <script src="./app.js?v=2.5.0"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=2.4.0').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=2.5.0').then(function(reg) {
           reg.update();
         }).catch(function(e) {
           console.log('SW register failed: ', e);
