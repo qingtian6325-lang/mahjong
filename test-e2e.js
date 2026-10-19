@@ -224,7 +224,38 @@ async function runTests() {
   await page.waitForTimeout(400);
   const speechBubble = await page.$eval('.speech-bubble', el => el.textContent).catch(() => null);
   console.log(`- Floating speech bubble text: "${speechBubble}"`);
-  await page.screenshot({ path: 'test-chat-bubble.png' });
+  // TEST 7: Match Recovery & Reconnect Modal Verification
+  console.log('\n[TEST 7] Testing Disconnect Reconnect & Recovery Modal...');
+  await page.evaluate(() => {
+    localStorage.removeItem('mj_host_saved_match');
+    localStorage.setItem('mj_active_match', JSON.stringify({
+      code: '8T4M',
+      isHost: false,
+      name: '测试雀王',
+      time: Date.now()
+    }));
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(500);
+
+  const reconnectModalShown = await page.$eval('#modalReconnect', el => el.classList.contains('show'));
+  const recCode = await page.$eval('#reconnectRoomCode', el => el.textContent);
+  const recRole = await page.$eval('#reconnectRoleBadge', el => el.textContent);
+  console.log(`- Reconnect modal prompted on page entry: ${reconnectModalShown}`);
+  console.log(`- Detected active room code: ${recCode}, role: ${recRole}`);
+
+  if (!reconnectModalShown || recCode !== '8T4M') {
+    throw new Error('Reconnect modal failed to prompt for ongoing match!');
+  }
+
+  await page.screenshot({ path: 'test-modal-reconnect.png' });
+  console.log('- Reconnect modal screenshot saved: test-modal-reconnect.png');
+
+  // Cancel reconnect and clean up
+  await page.click('#btnCancelReconnect');
+  await page.waitForTimeout(300);
+  const modeSelectReturned = await page.$eval('#modalModeSelect', el => el.classList.contains('show'));
+  console.log(`- Gracefully returned to mode select after cancel: ${modeSelectReturned}`);
 
   // FINALIZE
   console.log('\n--- TEST SUMMARY ---');

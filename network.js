@@ -30,6 +30,20 @@
     return (s || '').replace(/[<>&"'\s]/g, '').slice(0, 8);
   }
 
+  function getMyClientId() {
+    var id = null;
+    try {
+      id = localStorage.getItem('mj_client_id');
+      if (!id) {
+        id = 'c_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-3);
+        localStorage.setItem('mj_client_id', id);
+      }
+    } catch (e) {
+      id = 'c_' + Math.random().toString(36).slice(2, 9);
+    }
+    return id;
+  }
+
   var session = null;
 
   var MahjongNetwork = {
@@ -40,6 +54,7 @@
     genRoomCode: genRoomCode,
     getShareLink: getShareLink,
     cleanName: cleanName,
+    getMyClientId: getMyClientId,
 
     connect: function(code, asHost, name, handlers) {
       if (!window.supabase) {
@@ -48,7 +63,7 @@
       }
       this.leave();
 
-      var myId = 'c_' + Math.random().toString(36).slice(2, 10);
+      var myId = getMyClientId();
       session = {
         code: code,
         isHost: asHost,
@@ -66,6 +81,7 @@
         pending: {},
         presenceKeys: {},
         hostSeen: false,
+        hostGoneTimer: null,
         guestInLobby: false,
         myHand: null,
         myDrawn: null,
@@ -197,8 +213,9 @@
             MahjongNetwork.send('join', { clientId: session.myId, name: session.myName });
           }
           if (session.handlers.onConnected) session.handlers.onConnected(asHost, code);
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          if (session.handlers.onError) session.handlers.onError('网络连接失败或超时，请重试');
+          if (session.handlers.onChannelConnected) session.handlers.onChannelConnected();
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          if (session.handlers.onChannelDisconnected) session.handlers.onChannelDisconnected();
         }
       });
     },
@@ -250,10 +267,20 @@
             if (m.role === 'host') hostHere = true;
           });
         });
-        if (hostHere) session.hostSeen = true;
-        else if (session.hostSeen) {
-          session.hostSeen = false;
-          if (session.handlers.onHostGone) session.handlers.onHostGone();
+        if (hostHere) {
+          session.hostSeen = true;
+          if (session.hostGoneTimer) {
+            clearTimeout(session.hostGoneTimer);
+            session.hostGoneTimer = null;
+            if (session.handlers.onHostRestored) session.handlers.onHostRestored();
+          }
+        } else if (session.hostSeen && !session.hostGoneTimer) {
+          if (session.handlers.onHostTemporaryGone) session.handlers.onHostTemporaryGone(60);
+          session.hostGoneTimer = setTimeout(function() {
+            session.hostGoneTimer = null;
+            session.hostSeen = false;
+            if (session.handlers.onHostGone) session.handlers.onHostGone();
+          }, 60000);
         }
       }
     },
@@ -262,30 +289,33 @@
       if (!p || !p.clientId || typeof p.name !== 'string' || !session) return;
       var clean = cleanName(p.name) || '玩家';
 
-      // 1. Mid-game rejoin
+      // 1. Mid-game rejoin (match by clientId or name)
       if (session.started && session.handlers.onGuestRejoin) {
         var seat = session.handlers.onGuestRejoin(clean, p.clientId);
         if (seat >= 0) {
           this.send('assign', { to: p.clientId, seat: seat });
+          this.broadcastLobby();
           return;
         }
-        this.send('room-note', { to: p.clientId, text: '这局游戏已经开始，请稍候等房主回大厅' });
+        this.send('room-note', { to: p.clientId, text: '这局游戏已经开始，座位不匹配' });
         return;
       }
 
-      // 2. Already in lobby
+      // 2. Already in lobby (matched by clientId)
       for (var i = 0; i < 4; i++) {
         var s = session.seats[i];
         if (s && s.clientId === p.clientId) {
+          s.online = true;
           this.send('assign', { to: p.clientId, seat: i });
+          this.broadcastLobby();
           return;
         }
       }
 
-      // 3. Reconnect lobby slot with same name
+      // 3. Reconnect lobby slot with same name or clientId
       for (var j = 1; j < 4; j++) {
         var s2 = session.seats[j];
-        if (s2 && s2.name === clean && !(session.presenceKeys && session.presenceKeys[s2.clientId])) {
+        if (s2 && (s2.name === clean || s2.clientId === p.clientId)) {
           s2.clientId = p.clientId;
           s2.online = true;
           this.send('assign', { to: p.clientId, seat: j });
@@ -370,6 +400,10 @@
 
     leave: function() {
       if (session) {
+        if (session.hostGoneTimer) {
+          clearTimeout(session.hostGoneTimer);
+          session.hostGoneTimer = null;
+        }
         if (!session.isHost && session.channel) {
           this.send('bye', { from: session.myId });
         }

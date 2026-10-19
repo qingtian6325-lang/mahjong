@@ -40,11 +40,194 @@
   /* ================= Initialization ================= */
   window.addEventListener('DOMContentLoaded', function() {
     initUI();
-    var hasRoom = checkURLRoom();
-    if (!hasRoom) {
-      showModal('modalModeSelect');
+    var hasRecovered = checkMatchRecovery();
+    if (!hasRecovered) {
+      var hasRoom = checkURLRoom();
+      if (!hasRoom) {
+        showModal('modalModeSelect');
+      }
     }
   });
+
+  function checkMatchRecovery() {
+    var savedHost = null;
+    var activeMatch = null;
+    try {
+      savedHost = JSON.parse(localStorage.getItem('mj_host_saved_match'));
+    } catch (e) {}
+    try {
+      activeMatch = JSON.parse(localStorage.getItem('mj_active_match'));
+    } catch (e) {}
+
+    var match = savedHost || activeMatch;
+    if (!match || !match.code) return false;
+
+    // Only recover matches within the last 2 hours
+    if (Date.now() - match.time > 7200000) {
+      clearActiveMatch();
+      return false;
+    }
+
+    var isHost = savedHost ? true : !!match.isHost;
+    var code = match.code;
+    var name = match.name || '玩家';
+
+    var codeEl = document.getElementById('reconnectRoomCode');
+    var roleEl = document.getElementById('reconnectRoleBadge');
+    var progEl = document.getElementById('reconnectProgressInfo');
+
+    if (codeEl) codeEl.textContent = code;
+    if (roleEl) {
+      roleEl.textContent = isHost ? '👑 房主' : '👤 玩家';
+      roleEl.style.color = isHost ? 'var(--gold-light)' : '#2ecc71';
+    }
+
+    var progressText = '第 1 局进行中';
+    if (savedHost && savedHost.S) {
+      progressText = '第 ' + savedHost.S.round + ' 局进行中 (对局数据已完整恢复)';
+    }
+    if (progEl) progEl.textContent = progressText;
+
+    showModal('modalReconnect');
+
+    // Confirm Reconnect
+    var btnConfirm = document.getElementById('btnConfirmReconnect');
+    if (btnConfirm) {
+      btnConfirm.onclick = function() {
+        Audio.playButton();
+        hideModal('modalReconnect');
+        hideModal('modalModeSelect');
+        Audio.startBGM();
+
+        if (isHost && savedHost && savedHost.S) {
+          restoreHostMatch(savedHost);
+        } else {
+          connectOnlineRoom(code, false, name);
+        }
+      };
+    }
+
+    // Cancel Reconnect
+    var btnCancel = document.getElementById('btnCancelReconnect');
+    if (btnCancel) {
+      btnCancel.onclick = function() {
+        Audio.playButton();
+        clearActiveMatch();
+        hideModal('modalReconnect');
+        showModal('modalModeSelect');
+      };
+    }
+
+    return true;
+  }
+
+  function showReconnectPill(msg) {
+    var pill = document.getElementById('reconnectPill');
+    var text = document.getElementById('reconnectPillText');
+    if (pill) {
+      if (text && msg) text.textContent = msg;
+      pill.style.display = 'flex';
+    }
+  }
+
+  function hideReconnectPill() {
+    var pill = document.getElementById('reconnectPill');
+    if (pill) pill.style.display = 'none';
+  }
+
+  function restoreHostMatch(savedHost) {
+    showToast('正在重连恢复房间 ' + savedHost.code + ' ...');
+    connectOnlineRoom(savedHost.code, true, savedHost.name);
+
+    S = savedHost.S;
+    MODE = 'host';
+    ME = 0;
+    VIEW = 0;
+
+    if (Network.currentSession) {
+      Network.currentSession.started = true;
+      for (var i = 1; i < 4; i++) {
+        var pl = S.players[i];
+        if (pl && pl.clientId) {
+          Network.currentSession.seats[i] = {
+            clientId: pl.clientId,
+            name: pl.name,
+            online: false,
+            ready: true
+          };
+        }
+      }
+    }
+
+    render();
+    scheduleSync();
+
+    showToast('对局已恢复！正在等待玩家归队...');
+
+    if (!S.over) {
+      runTurnLoop(S.gen);
+    }
+  }
+
+  function saveActiveMatch(code, asHost, name) {
+    try {
+      localStorage.setItem('mj_active_match', JSON.stringify({
+        code: code,
+        isHost: asHost,
+        name: name,
+        time: Date.now()
+      }));
+    } catch (e) {}
+  }
+
+  function clearActiveMatch() {
+    try {
+      localStorage.removeItem('mj_active_match');
+      localStorage.removeItem('mj_host_saved_match');
+    } catch (e) {}
+  }
+
+  function saveHostGameState() {
+    if (MODE !== 'host' || !S || !Network.currentSession) return;
+    try {
+      var saved = {
+        code: Network.currentSession.code,
+        name: Network.currentSession.myName,
+        time: Date.now(),
+        S: {
+          gen: S.gen,
+          round: S.round,
+          dealer: S.dealer,
+          scores: S.scores,
+          lastDeltas: S.lastDeltas,
+          history: S.history,
+          wall: S.wall,
+          current: S.current,
+          lastDiscard: S.lastDiscard,
+          over: S.over,
+          spec: S.spec,
+          players: S.players.map(function(p) {
+            return {
+              name: p.name,
+              isBot: p.isBot,
+              ctrl: p.ctrl,
+              clientId: p.clientId,
+              online: p.online,
+              av: p.av,
+              hand: p.hand,
+              melds: p.melds,
+              flowers: p.flowers,
+              flowerKong: p.flowerKong,
+              discards: p.discards,
+              lastDrawn: p.lastDrawn,
+              guoshui: p.guoshui
+            };
+          })
+        }
+      };
+      localStorage.setItem('mj_host_saved_match', JSON.stringify(saved));
+    } catch (e) {}
+  }
 
   function checkURLRoom() {
     var params = new URLSearchParams(window.location.search);
@@ -175,6 +358,7 @@
     showToast('第 ' + S.round + ' 局开始，' + S.players[S.dealer].name + ' 坐庄');
     render();
     scheduleSync();
+    saveHostGameState();
 
     if (MODE !== 'guest') {
       runTurnLoop(S.gen);
@@ -518,6 +702,7 @@
         type: 'discard',
         seat: seat,
         wid: wid,
+        payload: payload,
         resolve: resolve,
         timer: null,
         resend: null
@@ -574,6 +759,7 @@
         type: 'claim',
         seat: seat,
         wid: wid,
+        payload: payload,
         resolve: resolve,
         timer: null,
         resend: null
@@ -676,6 +862,7 @@
 
   function doSync() {
     if (MODE !== 'host' || !S) return;
+    saveHostGameState();
     var snap = {
       round: S.round,
       dealer: S.dealer,
@@ -1873,6 +2060,29 @@
       });
     }
 
+    var btnManualReconnect = document.getElementById('btnManualReconnect');
+    if (btnManualReconnect) {
+      btnManualReconnect.addEventListener('click', function() {
+        Audio.playButton();
+        var sess = Network.currentSession;
+        if (sess && sess.code) {
+          showToast('正在重新连线...');
+          connectOnlineRoom(sess.code, sess.isHost, sess.myName);
+        } else {
+          var activeMatch = null;
+          try {
+            activeMatch = JSON.parse(localStorage.getItem('mj_active_match'));
+          } catch (e) {}
+          if (activeMatch && activeMatch.code) {
+            connectOnlineRoom(activeMatch.code, activeMatch.isHost, activeMatch.name);
+          } else {
+            hideReconnectPill();
+            showModal('modalModeSelect');
+          }
+        }
+      });
+    }
+
     // Do NOT automatically start game here - wait for user to select mode!
   }
 
@@ -1885,6 +2095,8 @@
         MODE = isHost ? 'host' : 'guest';
         ME = isHost ? 0 : -1;
         VIEW = isHost ? 0 : 0;
+        saveActiveMatch(roomCode, isHost, name);
+        hideReconnectPill();
 
         document.getElementById('lobbyRoomCode').textContent = roomCode;
         var shareLink = Network.getShareLink(roomCode);
@@ -1900,8 +2112,24 @@
           window.drawQRCode(shareLink, qrCanvas, 110);
         }
 
-        showModal('modalLobby');
+        if (!S || S.over) {
+          showModal('modalLobby');
+        }
         showToast('已进入房间 ' + roomCode);
+      },
+      onChannelConnected: function() {
+        hideReconnectPill();
+      },
+      onChannelDisconnected: function() {
+        showReconnectPill('⚠️ 网络连接中断，正在自动重连...');
+      },
+      onHostTemporaryGone: function(seconds) {
+        showReconnectPill('⏳ 房主暂时掉线，等待重连中 (' + seconds + 's)...');
+        showToast('房主网络波动暂时离开，保留席位等待重连...');
+      },
+      onHostRestored: function() {
+        hideReconnectPill();
+        showToast('🟢 房主已重新连回，对局继续！');
       },
       onLobbyUpdate: function(payload) {
         renderLobbyUI(payload);
@@ -1909,6 +2137,10 @@
       onSeatAssigned: function(seat) {
         ME = seat;
         VIEW = seat;
+        hideModal('modalLobby');
+        hideModal('modalModeSelect');
+        hideModal('modalReconnect');
+        hideReconnectPill();
         render();
         showToast('分配到座位：' + (seat + 1) + '号位');
       },
@@ -1951,15 +2183,39 @@
         }
       },
       onGuestRejoin: function(rejoinName, clientId) {
-        // Find offline seat matching name
+        // Find offline seat matching clientId or name
         if (S) {
           for (var i = 1; i < 4; i++) {
-            if (S.players[i].name === rejoinName) {
-              S.players[i].clientId = clientId;
-              S.players[i].online = true;
-              S.players[i].ctrl = 'remote';
-              S.players[i].isBot = false;
-              scheduleSync();
+            var pl = S.players[i];
+            if (pl.clientId === clientId || pl.name === rejoinName) {
+              pl.clientId = clientId;
+              pl.online = true;
+              pl.ctrl = 'remote';
+              pl.isBot = false;
+              if (Network.currentSession && Network.currentSession.seats[i]) {
+                Network.currentSession.seats[i].clientId = clientId;
+                Network.currentSession.seats[i].online = true;
+                Network.currentSession.seats[i].ready = true;
+              }
+              showToast(pl.name + ' 成功重新连回对局！');
+              render();
+              doSync();
+
+              var pd = hostPending[i];
+              if (pd) {
+                if (pd.type === 'discard') {
+                  Network.send('turn', {
+                    to: clientId,
+                    wid: pd.wid,
+                    canTsumo: Engine.canWinHand(pl.hand, pl.melds.length),
+                    kongs: S.wall.length ? Engine.findKongs(pl) : []
+                  });
+                } else if (pd.type === 'claim' && pd.payload) {
+                  pd.payload.to = clientId;
+                  Network.send('claim', pd.payload);
+                }
+              }
+
               return i;
             }
           }
@@ -1972,6 +2228,9 @@
       onGameStarted: function() {
         hideModal('modalLobby');
         hideModal('modalSettle');
+        hideModal('modalModeSelect');
+        hideModal('modalReconnect');
+        hideReconnectPill();
         showToast('全员已就绪，游戏开始！');
       },
       onHostGone: function() {
@@ -2116,6 +2375,8 @@
   }
 
   function leaveOnlineRoom() {
+    clearActiveMatch();
+    hideReconnectPill();
     Network.leave();
     MODE = 'single';
     ME = 0;

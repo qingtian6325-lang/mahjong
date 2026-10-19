@@ -200,6 +200,40 @@
     <!-- Global Toast Message -->
     <div class="toast-msg" id="toastMsg"></div>
 
+    <!-- Floating Reconnect Banner Pill -->
+    <div class="reconnect-pill" id="reconnectPill" style="display:none;">
+      <span class="reconnect-pill-text" id="reconnectPillText">⚠️ 网络连接异常，正在重连...</span>
+      <button class="reconnect-pill-btn" id="btnManualReconnect">重连</button>
+    </div>
+
+    <!-- Modal: Reconnect & Resume Active Match (断线重连恢复对局) -->
+    <div class="modal-overlay" id="modalReconnect">
+      <div class="modal-card" style="max-width:440px;">
+        <div class="modal-title">⚡ 发现未完成的对局</div>
+        <div class="modal-sub">系统检测到您之前有一场正在进行的多人联机对战，可直接重连继续！</div>
+
+        <div style="background:rgba(0,0,0,0.35);padding:14px 16px;border-radius:14px;border:1px solid rgba(212,175,55,0.35);display:flex;flex-direction:column;gap:8px;font-size:13px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="color:var(--text-muted);">房间号：</span>
+            <span id="reconnectRoomCode" style="font-size:20px;font-weight:900;color:var(--gold-light);letter-spacing:3px;">----</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="color:var(--text-muted);">你的身份：</span>
+            <span id="reconnectRoleBadge" style="font-weight:bold;color:#2ecc71;">房主</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="color:var(--text-muted);">对局进度：</span>
+            <span id="reconnectProgressInfo" style="color:#fff;">第 1 局进行中</span>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:6px;">
+          <button class="primary-btn green" id="btnConfirmReconnect" style="flex:1.2;">⚡ 立即重连恢复</button>
+          <button class="primary-btn orange" id="btnCancelReconnect" style="flex:0.8;background:rgba(231,76,60,0.2);border-color:#e74c3c;color:#ff9999;">🚪 放弃对局</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal: Welcome & Mode Selection (进入游戏模式选择) -->
     <div class="modal-overlay" id="modalModeSelect">
       <div class="modal-card mode-select-card">
@@ -438,17 +472,17 @@
   <!-- Supabase Realtime SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Game Scripts -->
-  <script src="./audio.js?v=2.3.0"></script>
-  <script src="./engine.js?v=2.3.0"></script>
-  <script src="./network.js?v=2.3.0"></script>
-  <script src="./qr.js?v=2.3.0"></script>
-  <script src="./app.js?v=2.3.0"></script>
+  <script src="./audio.js?v=2.4.0"></script>
+  <script src="./engine.js?v=2.4.0"></script>
+  <script src="./network.js?v=2.4.0"></script>
+  <script src="./qr.js?v=2.4.0"></script>
+  <script src="./app.js?v=2.4.0"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=2.3.0').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=2.4.0').then(function(reg) {
           reg.update();
         }).catch(function(e) {
           console.log('SW register failed: ', e);

@@ -1109,6 +1109,55 @@ html, body {
   to { transform: scale(1); opacity: 1; }
 }
 
+/* ================= Floating Reconnect Banner Pill ================= */
+.reconnect-pill {
+  position: fixed;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(231, 76, 60, 0.95);
+  border: 1px solid #ff7675;
+  color: #fff;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: bold;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: pulseReconnectPill 1.5s infinite alternate;
+}
+
+@keyframes pulseReconnectPill {
+  from { opacity: 0.88; transform: translateX(-50%) scale(0.98); }
+  to { opacity: 1; transform: translateX(-50%) scale(1.02); }
+}
+
+.reconnect-pill.success {
+  background: rgba(46, 204, 113, 0.95);
+  border-color: #2ecc71;
+  animation: none;
+}
+
+.reconnect-pill-btn {
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid #fff;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reconnect-pill-btn:hover {
+  background: #fff;
+  color: #e74c3c;
+}
+
 /* ================= Toast Notification ================= */
 .toast-msg {
   position: fixed;
