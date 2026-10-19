@@ -8,6 +8,28 @@
   var audioCtx = null;
   var isMuted = false;
 
+  var isBgmMuted = false;
+  var bgmVolume = 0.35;
+  var bgmMasterGain = null;
+  var bgmInterval = null;
+  var bgmStep = 0;
+  var bgmDroneOsc1 = null;
+  var bgmDroneOsc2 = null;
+
+  var PENTA = {
+    C3: 130.81, D3: 146.83, E3: 164.81, G3: 196.00, A3: 220.00,
+    C4: 261.63, D4: 293.66, E4: 329.63, G4: 392.00, A4: 440.00,
+    C5: 523.25, D5: 587.33, E5: 659.25, G5: 783.99, A5: 880.00
+  };
+
+  // 32-step traditional Chinese leisure pentatonic melody pattern
+  var BGM_PATTERN = [
+    ['E4', 'C3'], null, ['G4', null], null, ['A4', 'G3'], null, ['G4', null], null,
+    ['E4', 'C3'], null, ['D4', null], null, ['C4', 'A3'], null, ['D4', null], ['E4', null],
+    ['G4', 'E3'], null, ['C5', null], null, ['D5', 'G3'], null, ['C5', null], null,
+    ['A4', 'A3'], null, ['G4', null], null, ['E4', 'C3'], ['D4', null], ['C4', 'G3'], null
+  ];
+
   function getAudioContext() {
     if (!audioCtx) {
       var AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -21,11 +43,108 @@
     return audioCtx;
   }
 
+  function getBgmMasterGain(ctx) {
+    if (!bgmMasterGain && ctx) {
+      bgmMasterGain = ctx.createGain();
+      bgmMasterGain.gain.setValueAtTime(isBgmMuted ? 0 : bgmVolume, ctx.currentTime);
+      bgmMasterGain.connect(ctx.destination);
+    }
+    return bgmMasterGain;
+  }
+
+  function playPluckNote(ctx, freq, dest, vol, decayTime) {
+    if (!freq) return;
+    var now = ctx.currentTime;
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    var filter = ctx.createBiquadFilter();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, now);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(freq * 3.2, now);
+    filter.frequency.exponentialRampToValueAtTime(freq * 0.9, now + (decayTime || 0.65));
+
+    gain.gain.setValueAtTime(vol || 0.22, now);
+    gain.gain.exponentialRampToValueAtTime(0.0005, now + (decayTime || 0.65));
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(dest);
+
+    osc.start(now);
+    osc.stop(now + (decayTime || 0.68));
+  }
+
+  function tickBgm() {
+    if (isBgmMuted) return;
+    var ctx = getAudioContext();
+    if (!ctx) return;
+    var master = getBgmMasterGain(ctx);
+
+    var item = BGM_PATTERN[bgmStep % BGM_PATTERN.length];
+    bgmStep++;
+
+    if (item) {
+      var melodyKey = item[0];
+      var bassKey = item[1];
+      if (melodyKey && PENTA[melodyKey]) {
+        playPluckNote(ctx, PENTA[melodyKey], master, 0.26, 0.65);
+      }
+      if (bassKey && PENTA[bassKey]) {
+        playPluckNote(ctx, PENTA[bassKey], master, 0.18, 0.85);
+      }
+    }
+  }
+
+  function startBgmDrone(ctx, master) {
+    if (bgmDroneOsc1) return;
+    try {
+      bgmDroneOsc1 = ctx.createOscillator();
+      bgmDroneOsc2 = ctx.createOscillator();
+      var droneGain = ctx.createGain();
+      var filter = ctx.createBiquadFilter();
+
+      bgmDroneOsc1.type = 'sine';
+      bgmDroneOsc1.frequency.setValueAtTime(PENTA.C3, ctx.currentTime);
+      bgmDroneOsc2.type = 'sine';
+      bgmDroneOsc2.frequency.setValueAtTime(PENTA.G3, ctx.currentTime);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(260, ctx.currentTime);
+
+      droneGain.gain.setValueAtTime(0.045, ctx.currentTime);
+
+      bgmDroneOsc1.connect(filter);
+      bgmDroneOsc2.connect(filter);
+      filter.connect(droneGain);
+      droneGain.connect(master);
+
+      bgmDroneOsc1.start();
+      bgmDroneOsc2.start();
+    } catch (e) {}
+  }
+
+  function stopBgmDrone() {
+    if (bgmDroneOsc1) {
+      try {
+        bgmDroneOsc1.stop();
+        bgmDroneOsc2.stop();
+      } catch (e) {}
+      bgmDroneOsc1 = null;
+      bgmDroneOsc2 = null;
+    }
+  }
+
   // Auto-unlock on first user gesture (critical for iOS Safari and mobile Chrome)
   function unlockAudio() {
     var ctx = getAudioContext();
     if (ctx && ctx.state === 'suspended') {
       ctx.resume();
+    }
+    if (!MahjongAudio.bgmMuted) {
+      MahjongAudio.startBGM();
     }
     window.removeEventListener('touchstart', unlockAudio);
     window.removeEventListener('click', unlockAudio);
@@ -44,9 +163,73 @@
       } catch (e) {}
     },
 
+    get bgmMuted() {
+      return isBgmMuted;
+    },
+    set bgmMuted(val) {
+      isBgmMuted = !!val;
+      try {
+        localStorage.setItem('mj_bgm_muted', isBgmMuted ? '1' : '0');
+      } catch (e) {}
+      var ctx = getAudioContext();
+      if (ctx && bgmMasterGain) {
+        bgmMasterGain.gain.setValueAtTime(isBgmMuted ? 0 : bgmVolume, ctx.currentTime);
+      }
+      if (isBgmMuted) {
+        this.stopBGM();
+      } else {
+        this.startBGM();
+      }
+    },
+
+    get bgmVolume() {
+      return bgmVolume;
+    },
+    set bgmVolume(val) {
+      bgmVolume = Math.max(0, Math.min(1, parseFloat(val) || 0.35));
+      try {
+        localStorage.setItem('mj_bgm_vol', String(bgmVolume));
+      } catch (e) {}
+      var ctx = getAudioContext();
+      if (ctx && bgmMasterGain && !isBgmMuted) {
+        bgmMasterGain.gain.setValueAtTime(bgmVolume, ctx.currentTime);
+      }
+    },
+
+    startBGM: function() {
+      if (isBgmMuted) return;
+      var ctx = getAudioContext();
+      if (!ctx) return;
+      var master = getBgmMasterGain(ctx);
+      master.gain.setValueAtTime(isBgmMuted ? 0 : bgmVolume, ctx.currentTime);
+
+      startBgmDrone(ctx, master);
+
+      if (!bgmInterval) {
+        bgmStep = 0;
+        bgmInterval = setInterval(tickBgm, 290);
+      }
+    },
+
+    stopBGM: function() {
+      if (bgmInterval) {
+        clearInterval(bgmInterval);
+        bgmInterval = null;
+      }
+      stopBgmDrone();
+    },
+
+    toggleBGM: function() {
+      this.bgmMuted = !this.bgmMuted;
+      return !this.bgmMuted;
+    },
+
     init: function() {
       try {
-        isMuted = localStorage.getItem('mj_muted') === '1';
+        isMuted = (localStorage.getItem('mj_muted') === '1');
+        isBgmMuted = (localStorage.getItem('mj_bgm_muted') === '1');
+        var v = localStorage.getItem('mj_bgm_vol');
+        if (v !== null) bgmVolume = parseFloat(v) || 0.35;
       } catch (e) {}
     },
 

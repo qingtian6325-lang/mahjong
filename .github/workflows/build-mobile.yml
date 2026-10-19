@@ -1,0 +1,101 @@
+name: Build Mobile Apps (APK & iOS)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Build Web Assets & Sync Capacitor
+        run: |
+          npm run build
+          npx cap sync android
+
+      - name: Build Android Debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mahjong-Android-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  build-ios:
+    name: Build iOS App Workspace
+    runs-on: macos-14
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Build Web Assets & Sync Capacitor
+        run: |
+          npm run build
+          npx cap sync ios
+
+      - name: Build iOS Xcode Archive
+        run: |
+          cd ios/App
+          if [ -d "App.xcworkspace" ]; then
+            xcodebuild -workspace App.xcworkspace \
+              -scheme App \
+              -configuration Debug \
+              -destination 'generic/platform=iOS' \
+              -derivedDataPath build \
+              CODE_SIGNING_ALLOWED=NO \
+              build
+          else
+            xcodebuild -project App.xcodeproj \
+              -scheme App \
+              -configuration Debug \
+              -destination 'generic/platform=iOS' \
+              -derivedDataPath build \
+              CODE_SIGNING_ALLOWED=NO \
+              build
+          fi
+
+      - name: Zip iOS Build Artifact
+        run: |
+          cd ios/App/build/Build/Products/Debug-iphoneos
+          zip -r Mahjong-iOS-App.zip App.app
+
+      - name: Upload iOS App Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mahjong-iOS-App
+          path: ios/App/build/Build/Products/Debug-iphoneos/Mahjong-iOS-App.zip
+          if-no-files-found: warn

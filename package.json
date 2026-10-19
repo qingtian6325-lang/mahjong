@@ -5,8 +5,10 @@
   "main": "index.html",
   "scripts": {
     "start": "node -e \"const http=require('http'),fs=require('fs'),path=require('path');http.createServer((req,res)=>{let f=req.url.split('?')[0];if(f==='/')f='/index.html';let p=path.join(__dirname,f);if(fs.existsSync(p)){let ext=path.extname(p);let m={'html':'text/html','css':'text/css','js':'application/javascript','svg':'image/svg+xml','json':'application/json'}[ext.slice(1)]||'text/plain';res.writeHead(200,{'Content-Type':m+'; charset=utf-8'});fs.createReadStream(p).pipe(res);}else{res.writeHead(404);res.end('Not found');}}).listen(8080,()=>console.log('Server running at http://localhost:8080/'));\"",
+    "build": "node -e \"const fs=require('fs');if(!fs.existsSync('www'))fs.mkdirSync('www');['index.html','style.css','audio.js','engine.js','network.js','qr.js','app.js','icon.svg','manifest.webmanifest','sw.js'].forEach(f=>fs.copyFileSync(f,'www/'+f));console.log('Build complete -> www/');\"",
     "test": "node -e \"global.window={addEventListener:()=>{},removeEventListener:()=>{},localStorage:{getItem:()=>null,setItem:()=>{}},location:{protocol:'https:',host:'localhost',pathname:'/'}};require('./audio.js');require('./engine.js');require('./network.js');require('./qr.js');console.log('All modules valid!');\"",
-    "test:e2e": "node test-e2e.js"
+    "test:e2e": "node test-e2e.js",
+    "cap:sync": "npm run build && npx cap sync"
   },
   "keywords": [
     "mahjong",
@@ -21,5 +23,11 @@
   "license": "MIT",
   "devDependencies": {
     "playwright-core": "^1.64.1"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3"
   }
 }

@@ -13,6 +13,16 @@ dist/
 test-*.png
 live-*.png
 
+# Mobile Build Caches
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+ios/App/build/
+ios/App/Pods/
+ios/App/.derivedData/
+www/
+
 # IDE
 .vscode/
 .idea/

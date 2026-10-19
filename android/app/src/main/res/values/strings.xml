@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">打麻将</string>
+    <string name="title_activity_main">打麻将</string>
+    <string name="package_name">com.qingtian.mahjong</string>
+    <string name="custom_url_scheme">com.qingtian.mahjong</string>
+</resources>

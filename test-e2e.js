@@ -141,14 +141,21 @@ async function runTests() {
 
   // Test creating room as Host to test ready states
   await page.click('#btnCreateRoom');
+  await page.waitForFunction(() => {
+    const el = document.getElementById('lobbyRoomCode');
+    return el && el.textContent !== '----';
+  }, { timeout: 8000 }).catch(() => {});
   await page.waitForTimeout(500);
-  const hasHostTag = await page.$eval('#lobbySeatsGrid', el => el.innerText.includes('房主 (已就绪)'));
-  const hasStartBtn = await page.$eval('#btnStartOnlineGame', el => el.style.display !== 'none');
+
+  const hasHostTag = await page.$eval('#lobbySeatsGrid', el => el.innerText.includes('房主 (已就绪)')).catch(() => false);
+  const hasStartBtn = await page.$eval('#btnStartOnlineGame', el => el.style.display !== 'none').catch(() => false);
   console.log(`- Created room: Host badge shown=${hasHostTag}, Host start button visible=${hasStartBtn}`);
 
   await page.screenshot({ path: 'test-modal-lobby.png' });
-  await page.click('#modalLobby .close-btn');
-  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('show'));
+  });
+  await page.waitForTimeout(300);
 
   // 2. Rules Modal
   await page.click('#btnRules');

@@ -1588,6 +1588,39 @@
       Audio.playButton();
     });
 
+    // BGM (Background Music) Controls
+    var btnBgm = document.getElementById('btnBgmToggle');
+    var btnSettingsBgm = document.getElementById('btnSettingsBgmToggle');
+    var sliderBgmVol = document.getElementById('sliderBgmVolume');
+
+    function syncBgmDisplay() {
+      var active = !Audio.bgmMuted;
+      if (btnBgm) btnBgm.textContent = active ? '🎵 音乐' : '🔇 音乐';
+      if (btnSettingsBgm) btnSettingsBgm.textContent = active ? '🎵 开启' : '🔇 关闭';
+      if (sliderBgmVol) sliderBgmVol.value = Audio.bgmVolume;
+    }
+    syncBgmDisplay();
+
+    if (btnBgm) {
+      btnBgm.addEventListener('click', function() {
+        Audio.toggleBGM();
+        syncBgmDisplay();
+        Audio.playButton();
+      });
+    }
+    if (btnSettingsBgm) {
+      btnSettingsBgm.addEventListener('click', function() {
+        Audio.toggleBGM();
+        syncBgmDisplay();
+        Audio.playButton();
+      });
+    }
+    if (sliderBgmVol) {
+      sliderBgmVol.addEventListener('input', function() {
+        Audio.bgmVolume = parseFloat(this.value);
+      });
+    }
+
     // Theme selector buttons
     document.querySelectorAll('.theme-choice-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {

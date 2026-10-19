@@ -14,7 +14,7 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   <title>麻将大师 · 豪华翡翠雀台</title>
-  <link rel="stylesheet" href="./style.css?v=2.2.0" />
+  <link rel="stylesheet" href="./style.css?v=2.3.0" />
 </head>
 <body>
   <!-- Mobile Portrait Orientation Notice -->
@@ -37,6 +37,7 @@
         <button class="tb-btn" id="btnRules">📜 规则</button>
         <button class="tb-btn" id="btnSettings">⚙️ 设置</button>
         <button class="tb-btn" id="btnSoundToggle">🔊 音效</button>
+        <button class="tb-btn" id="btnBgmToggle">🎵 音乐</button>
         <button class="tb-btn" id="btnStartNew">🔄 新局</button>
         <button class="tb-btn" id="btnLeaveRoom" style="display:none;background:rgba(231,76,60,0.2);border-color:#e74c3c;color:#ff9999;">🚪 离开房间</button>
       </div>
@@ -354,6 +355,16 @@
             <span style="font-size:14px;">游戏音效</span>
             <button class="tb-btn" id="btnSettingsSoundToggle" style="padding:6px 16px;">🔊 开启</button>
           </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:14px;">背景音乐 (BGM)</span>
+            <button class="tb-btn" id="btnSettingsBgmToggle" style="padding:6px 16px;">🎵 开启</button>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:13px;color:var(--text-muted);width:80px;">音乐音量</span>
+            <input type="range" id="sliderBgmVolume" min="0" max="1" step="0.05" value="0.35" style="flex:1;accent-color:var(--gold);" />
+          </div>
         </div>
 
         <button class="primary-btn modal-close-action" style="margin-top:6px;">完成</button>
@@ -364,17 +375,17 @@
   <!-- Supabase Realtime SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Game Scripts -->
-  <script src="./audio.js?v=2.2.0"></script>
-  <script src="./engine.js?v=2.2.0"></script>
-  <script src="./network.js?v=2.2.0"></script>
-  <script src="./qr.js?v=2.2.0"></script>
-  <script src="./app.js?v=2.2.0"></script>
+  <script src="./audio.js?v=2.3.0"></script>
+  <script src="./engine.js?v=2.3.0"></script>
+  <script src="./network.js?v=2.3.0"></script>
+  <script src="./qr.js?v=2.3.0"></script>
+  <script src="./app.js?v=2.3.0"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=2.2.0').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=2.3.0').then(function(reg) {
           reg.update();
         }).catch(function(e) {
           console.log('SW register failed: ', e);
