@@ -54,10 +54,25 @@ async function runTests() {
     console.error('[PAGE ERROR]:', err.message);
   });
 
-  // TEST 1: Desktop Viewport (1280x720) & Fresh Game Start
-  console.log('\n[TEST 1] Testing Desktop Landscape (1280x720)...');
+  // TEST 1: Welcome Mode Selector & Start Single Player
+  console.log('\n[TEST 1] Testing Welcome Mode Selector on Page Load...');
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('http://127.0.0.1:8081/', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(600);
+
+  // Verify Mode Selection Modal is open and game has NOT started yet
+  const modeSelectShown = await page.$eval('#modalModeSelect', el => el.classList.contains('show'));
+  console.log(`- Welcome Mode Selection modal displayed on entry: ${modeSelectShown}`);
+  if (!modeSelectShown) throw new Error('Welcome Mode Selection modal was not shown on entry!');
+
+  // Check random nickname button
+  await page.click('#btnRandomName');
+  await page.waitForTimeout(200);
+  const nickname = await page.$eval('#inputWelcomeName', el => el.value);
+  console.log(`- Randomized nickname: "${nickname}"`);
+
+  // Start single player
+  await page.click('#btnStartSingle');
   await page.waitForTimeout(600);
 
   // Check table presence
@@ -187,6 +202,14 @@ async function runTests() {
   console.log(`- Theme switched to: ${currentTheme}`);
   await page.screenshot({ path: 'test-theme-obsidian.png' });
   await page.click('#modalSettings .close-btn');
+  await page.waitForTimeout(200);
+
+  // 5. Choose Mode Modal via Toolbar
+  await page.click('#btnChooseMode');
+  await page.waitForTimeout(200);
+  const modeModalReopened = await page.$eval('#modalModeSelect', el => el.classList.contains('show'));
+  console.log(`- Mode selection modal reopened via toolbar button: ${modeModalReopened}`);
+  await page.click('#btnStartSingle');
   await page.waitForTimeout(200);
 
   // TEST 6: Quick Chat & Floating Speech Bubble

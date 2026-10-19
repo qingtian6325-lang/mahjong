@@ -1,6 +1,6 @@
 {
   "name": "mahjong-master",
-  "version": "2.0.0",
+  "version": "2.4.0",
   "description": "Cross-platform 4-Player Mahjong App (iOS, Android, Web)",
   "main": "index.html",
   "scripts": {

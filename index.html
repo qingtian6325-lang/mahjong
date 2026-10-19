@@ -14,7 +14,7 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   <title>麻将大师 · 豪华翡翠雀台</title>
-  <link rel="stylesheet" href="./style.css?v=2.3.0" />
+  <link rel="stylesheet" href="./style.css?v=2.4.0" />
 </head>
 <body>
   <!-- Mobile Portrait Orientation Notice -->
@@ -32,7 +32,8 @@
         <span>麻将大师 · 豪华翡翠台</span>
       </div>
       <div class="toolbar-actions">
-        <button class="tb-btn active" id="btnLobby">🌐 联机对战</button>
+        <button class="tb-btn active" id="btnChooseMode" title="选择游戏模式">🏠 模式</button>
+        <button class="tb-btn" id="btnLobby">🌐 联机对战</button>
         <button class="tb-btn" id="btnHistory">📊 战绩</button>
         <button class="tb-btn" id="btnRules">📜 规则</button>
         <button class="tb-btn" id="btnSettings">⚙️ 设置</button>
@@ -99,8 +100,8 @@
                 </svg>
 
                 <div class="compass-center-content">
-                  <div class="timer-number" id="timerNumber">15</div>
-                  <div class="wall-count-badge" id="wallCountBadge">余 84 张</div>
+                  <div class="timer-number" id="timerNumber">🀄</div>
+                  <div class="wall-count-badge" id="wallCountBadge">等待开局</div>
                 </div>
 
                 <!-- Four Winds around the disc -->
@@ -198,6 +199,68 @@
 
     <!-- Global Toast Message -->
     <div class="toast-msg" id="toastMsg"></div>
+
+    <!-- Modal: Welcome & Mode Selection (进入游戏模式选择) -->
+    <div class="modal-overlay" id="modalModeSelect">
+      <div class="modal-card mode-select-card">
+        <div class="mode-select-header">
+          <div class="mode-logo-emblem">🀄</div>
+          <div class="modal-title">麻将大师 · 豪华翡翠雀台</div>
+          <div class="modal-sub">特色「飛」万能牌 · 8张花牌杠结算 · 智能听牌分析 · 纯正国风音画</div>
+        </div>
+
+        <div class="mode-nickname-bar">
+          <span class="mode-nickname-label">雀神大名：</span>
+          <div class="mode-nickname-input-wrap">
+            <input id="inputWelcomeName" maxlength="8" placeholder="输入大名或随机生成" />
+            <button class="mode-dice-btn" id="btnRandomName" type="button" title="随机生成昵称">🎲 随机</button>
+          </div>
+        </div>
+
+        <div class="mode-choice-grid">
+          <!-- 1. Single Player Card -->
+          <div class="mode-card" id="cardModeSingle">
+            <div class="mode-card-badge single">🤖 离线秒开 · 智能AI</div>
+            <div class="mode-card-icon">🀄</div>
+            <div class="mode-card-title">单人练习模式</div>
+            <div class="mode-card-desc">与 3 位智能雀神 AI 快速过招，内置听牌分析与摸牌提示，随时开局、无惧网络！</div>
+            <div class="mode-card-perks">
+              <span class="mode-perk-pill">✨ 3位高智商AI陪练</span>
+              <span class="mode-perk-pill">✨ 实时金色「听」牌辅助</span>
+              <span class="mode-perk-pill">✨ 飞牌万能与花杠即时算分</span>
+            </div>
+            <button class="primary-btn mode-action-btn green" id="btnStartSingle">
+              🎮 开始单人练习
+            </button>
+          </div>
+
+          <!-- 2. Multiplayer Card -->
+          <div class="mode-card" id="cardModeMulti">
+            <div class="mode-card-badge multi">🌐 好友同台 · 扫码开房</div>
+            <div class="mode-card-icon">👥</div>
+            <div class="mode-card-title">好友多人联机</div>
+            <div class="mode-card-desc">邀请好友面对面扫码或输入 4 位房号同台竞技，全员就绪公平开赛，支持局内表情短语！</div>
+            <div class="mode-card-perks">
+              <span class="mode-perk-pill">✨ 4位极简房号 & 二维码</span>
+              <span class="mode-perk-pill">✨ 全员入座就绪公平开赛</span>
+              <span class="mode-perk-pill">✨ 局内快捷短语 & 互动表情</span>
+            </div>
+            <button class="primary-btn mode-action-btn orange" id="btnStartMulti">
+              🌐 进入联机大厅
+            </button>
+          </div>
+        </div>
+
+        <div class="mode-select-footer">
+          <div class="mode-quick-toggles">
+            <button class="mode-mini-btn" id="btnModeQuickBgm">🎵 音乐: 开</button>
+            <button class="mode-mini-btn" id="btnModeQuickSfx">🔊 音效: 开</button>
+            <button class="mode-mini-btn" id="btnModeQuickRules">📜 规则说明</button>
+          </div>
+          <div class="mode-version-tip">v2.4.0 · 跨平台 iOS / Android / Web</div>
+        </div>
+      </div>
+    </div>
 
     <!-- Modal: Online Lobby & Room Sharing -->
     <div class="modal-overlay" id="modalLobby">

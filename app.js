@@ -39,7 +39,10 @@
   /* ================= Initialization ================= */
   window.addEventListener('DOMContentLoaded', function() {
     initUI();
-    checkURLRoom();
+    var hasRoom = checkURLRoom();
+    if (!hasRoom) {
+      showModal('modalModeSelect');
+    }
   });
 
   function checkURLRoom() {
@@ -51,13 +54,20 @@
         document.getElementById('inputJoinCode').value = code;
         showModal('modalLobby');
         showToast('已加载邀请房间：' + code + '，请点击加入');
+        return true;
       }
     }
+    return false;
   }
 
   function singleSpec() {
+    var myName = '雀圣';
+    try {
+      var saved = localStorage.getItem('mj_player_name');
+      if (saved && saved.trim()) myName = saved.trim();
+    } catch (e) {}
     return [
-      { name: '你', ctrl: 'local', av: '你' },
+      { name: myName, ctrl: 'local', av: myName.charAt(0) },
       { name: Engine.BOT_NAMES[0], ctrl: 'bot', av: '强' },
       { name: Engine.BOT_NAMES[1], ctrl: 'bot', av: '美' },
       { name: Engine.BOT_NAMES[2], ctrl: 'bot', av: '王' }
@@ -1537,6 +1547,11 @@
   /* ================= UI Wiring & Listeners ================= */
   function initUI() {
     // Restore Theme & Nickname from LocalStorage
+    var welcomeInput = document.getElementById('inputWelcomeName');
+    var lobbyInput = document.getElementById('inputMyName');
+    var defaultNames = ['雀圣', '十三幺', '逢赌必赢', '天胡一色', '九莲宝灯', '自摸手软', '海底捞月', '杠上开花', '雀仙发哥', '大四喜', '一把自摸', '清一色雀王'];
+
+    var currentName = '雀圣';
     try {
       var savedTheme = localStorage.getItem('mj_theme') || 'emerald';
       document.body.setAttribute('data-theme', savedTheme);
@@ -1545,14 +1560,48 @@
       });
 
       var savedName = localStorage.getItem('mj_player_name');
-      if (savedName) document.getElementById('inputMyName').value = savedName;
+      if (savedName && savedName.trim()) currentName = savedName.trim();
     } catch (e) {}
 
-    document.getElementById('inputMyName').addEventListener('change', function() {
-      try { localStorage.setItem('mj_player_name', this.value); } catch (e) {}
-    });
+    function updatePlayerName(val) {
+      val = (val || '').trim() || '雀圣';
+      currentName = val;
+      if (welcomeInput) welcomeInput.value = val;
+      if (lobbyInput) lobbyInput.value = val;
+      try { localStorage.setItem('mj_player_name', val); } catch (e) {}
+    }
+
+    updatePlayerName(currentName);
+
+    if (welcomeInput) {
+      welcomeInput.addEventListener('change', function() { updatePlayerName(this.value); });
+      welcomeInput.addEventListener('input', function() { updatePlayerName(this.value); });
+    }
+    if (lobbyInput) {
+      lobbyInput.addEventListener('change', function() { updatePlayerName(this.value); });
+      lobbyInput.addEventListener('input', function() { updatePlayerName(this.value); });
+    }
+
+    // Random nickname generator button
+    var btnRandom = document.getElementById('btnRandomName');
+    if (btnRandom) {
+      btnRandom.addEventListener('click', function() {
+        Audio.playButton();
+        var pick = defaultNames[Math.floor(Math.random() * defaultNames.length)];
+        updatePlayerName(pick);
+        showToast('已随机生成昵称：' + pick);
+      });
+    }
 
     // Toolbar buttons
+    var btnChooseMode = document.getElementById('btnChooseMode');
+    if (btnChooseMode) {
+      btnChooseMode.addEventListener('click', function() {
+        Audio.playButton();
+        showModal('modalModeSelect');
+      });
+    }
+
     document.getElementById('btnStartNew').addEventListener('click', function() {
       Audio.playButton();
       startNewGame();
@@ -1747,8 +1796,72 @@
       }
     });
 
-    // Start single player by default
-    startNewGame();
+    // Start Single Player button in Welcome Mode Modal
+    var btnStartSingle = document.getElementById('btnStartSingle');
+    if (btnStartSingle) {
+      btnStartSingle.addEventListener('click', function() {
+        Audio.playButton();
+        if (welcomeInput) updatePlayerName(welcomeInput.value);
+        hideModal('modalModeSelect');
+        Audio.startBGM();
+        MODE = 'single';
+        ME = 0;
+        VIEW = 0;
+        startNewGame();
+      });
+    }
+
+    // Start Multiplayer button in Welcome Mode Modal
+    var btnStartMulti = document.getElementById('btnStartMulti');
+    if (btnStartMulti) {
+      btnStartMulti.addEventListener('click', function() {
+        Audio.playButton();
+        if (welcomeInput) updatePlayerName(welcomeInput.value);
+        hideModal('modalModeSelect');
+        Audio.startBGM();
+        var inRoom = (MODE !== 'single');
+        document.getElementById('lobbyCreateJoinArea').style.display = inRoom ? 'none' : 'flex';
+        document.getElementById('lobbyRoomActiveArea').style.display = inRoom ? 'block' : 'none';
+        showModal('modalLobby');
+      });
+    }
+
+    // Quick toggles in Welcome Mode Modal footer
+    var btnModeQuickBgm = document.getElementById('btnModeQuickBgm');
+    var btnModeQuickSfx = document.getElementById('btnModeQuickSfx');
+    var btnModeQuickRules = document.getElementById('btnModeQuickRules');
+
+    function syncModeQuickToggles() {
+      if (btnModeQuickBgm) btnModeQuickBgm.textContent = Audio.bgmMuted ? '🎵 音乐: 关' : '🎵 音乐: 开';
+      if (btnModeQuickSfx) btnModeQuickSfx.textContent = Audio.muted ? '🔇 音效: 关' : '🔊 音效: 开';
+    }
+    syncModeQuickToggles();
+
+    if (btnModeQuickBgm) {
+      btnModeQuickBgm.addEventListener('click', function() {
+        Audio.toggleBGM();
+        syncBgmDisplay();
+        syncModeQuickToggles();
+        Audio.playButton();
+      });
+    }
+    if (btnModeQuickSfx) {
+      btnModeQuickSfx.addEventListener('click', function() {
+        Audio.muted = !Audio.muted;
+        document.getElementById('btnSoundToggle').textContent = Audio.muted ? '🔇 静音' : '🔊 音效';
+        document.getElementById('btnSettingsSoundToggle').textContent = Audio.muted ? '🔇 关闭' : '🔊 开启';
+        syncModeQuickToggles();
+        Audio.playButton();
+      });
+    }
+    if (btnModeQuickRules) {
+      btnModeQuickRules.addEventListener('click', function() {
+        Audio.playButton();
+        showModal('modalRules');
+      });
+    }
+
+    // Do NOT automatically start game here - wait for user to select mode!
   }
 
   /* ================= Multiplayer Connection ================= */
@@ -1998,8 +2111,9 @@
     document.getElementById('btnLeaveRoom').style.display = 'none';
     document.getElementById('lobbyCreateJoinArea').style.display = 'flex';
     document.getElementById('lobbyRoomActiveArea').style.display = 'none';
-    showToast('已回到单机模式');
-    startNewGame();
+    hideModal('modalLobby');
+    showToast('已退出房间，返回模式选择');
+    showModal('modalModeSelect');
   }
 
   window.MahjongApp = {
