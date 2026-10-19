@@ -571,6 +571,13 @@ html, body {
   height: var(--pool-tile-h);
 }
 
+.seat-container-top .mj-tile,
+.seat-container-left .mj-tile,
+.seat-container-right .mj-tile {
+  width: var(--opp-tile-w);
+  height: var(--opp-tile-h);
+}
+
 .opp-hand-backs {
   display: flex;
   gap: 1.5px;
@@ -584,11 +591,15 @@ html, body {
 .opp-hand-backs.vertical {
   flex-direction: column;
   gap: 0;
+  max-height: 240px;
+  overflow: hidden;
 }
 
 .opp-hand-backs.vertical .mj-tile {
-  width: calc(var(--opp-tile-w) * 1.35);
-  height: 14px;
+  width: calc(var(--opp-tile-w) * 1.35) !important;
+  height: 14px !important;
+  min-height: 0 !important;
+  max-height: 14px !important;
   overflow: hidden;
   border-radius: 2px;
 }

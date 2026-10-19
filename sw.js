@@ -2,16 +2,16 @@
  * Mahjong PWA Service Worker
  * Enables offline caching and fast instant startup.
  */
-var CACHE_NAME = 'mahjong-v2-cache';
+var CACHE_NAME = 'mahjong-v2-1-0';
 var ASSETS = [
   './',
   './index.html',
-  './style.css',
-  './audio.js',
-  './engine.js',
-  './network.js',
-  './qr.js',
-  './app.js',
+  './style.css?v=2.1.0',
+  './audio.js?v=2.1.0',
+  './engine.js?v=2.1.0',
+  './network.js?v=2.1.0',
+  './qr.js?v=2.1.0',
+  './app.js?v=2.1.0',
   './icon.svg',
   './manifest.webmanifest'
 ];
@@ -41,9 +41,17 @@ self.addEventListener('activate', function(e) {
 });
 
 self.addEventListener('fetch', function(e) {
-  // Network first, fallback to cache
+  // Network first: always try to fetch fresh from network, update cache, fallback to cache if offline
   e.respondWith(
-    fetch(e.request).catch(function() {
+    fetch(e.request).then(function(networkResponse) {
+      if (networkResponse && networkResponse.status === 200 && e.request.method === 'GET') {
+        var copy = networkResponse.clone();
+        caches.open(CACHE_NAME).then(function(cache) {
+          cache.put(e.request, copy);
+        });
+      }
+      return networkResponse;
+    }).catch(function() {
       return caches.match(e.request);
     })
   );

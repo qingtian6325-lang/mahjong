@@ -11,6 +11,7 @@ dist/
 
 # Test artifacts
 test-*.png
+live-github-pages.png
 
 # IDE
 .vscode/

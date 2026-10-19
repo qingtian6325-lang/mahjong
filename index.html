@@ -8,10 +8,13 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="打麻将" />
   <meta name="theme-color" content="#072a19" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   <title>麻将大师 · 豪华翡翠雀台</title>
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style.css?v=2.1.0" />
 </head>
 <body>
   <!-- Mobile Portrait Orientation Notice -->
@@ -347,17 +350,19 @@
   <!-- Supabase Realtime SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Game Scripts -->
-  <script src="./audio.js"></script>
-  <script src="./engine.js"></script>
-  <script src="./network.js"></script>
-  <script src="./qr.js"></script>
-  <script src="./app.js"></script>
+  <script src="./audio.js?v=2.1.0"></script>
+  <script src="./engine.js?v=2.1.0"></script>
+  <script src="./network.js?v=2.1.0"></script>
+  <script src="./qr.js?v=2.1.0"></script>
+  <script src="./app.js?v=2.1.0"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js').catch(function(e) {
+        navigator.serviceWorker.register('./sw.js?v=2.1.0').then(function(reg) {
+          reg.update();
+        }).catch(function(e) {
           console.log('SW register failed: ', e);
         });
       });
