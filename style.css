@@ -27,11 +27,11 @@
   --orange: #e67e22;
 
   /* Standard Landscape Tile Dimensions */
-  --human-tile-w: clamp(40px, 5.8vw, 68px);
+  --human-tile-w: clamp(32px, 5.0vw, 54px);
   --human-tile-h: calc(var(--human-tile-w) * 1.38);
-  --pool-tile-w: clamp(20px, 2.8vw, 32px);
+  --pool-tile-w: clamp(16px, 2.2vw, 24px);
   --pool-tile-h: calc(var(--pool-tile-w) * 1.36);
-  --opp-tile-w: clamp(22px, 3.2vw, 36px);
+  --opp-tile-w: clamp(16px, 2.0vw, 22px);
   --opp-tile-h: calc(var(--opp-tile-w) * 1.36);
 }
 
@@ -242,8 +242,8 @@ html, body {
 }
 
 .compass-disc {
-  width: 120px;
-  height: 120px;
+  width: clamp(76px, 10vw, 96px);
+  height: clamp(76px, 10vw, 96px);
   position: relative;
   display: flex;
   align-items: center;
@@ -566,13 +566,36 @@ html, body {
   gap: 2px;
 }
 
+.opp-melds .mj-tile, .opp-flowers .mj-tile {
+  width: var(--pool-tile-w);
+  height: var(--pool-tile-h);
+}
+
 .opp-hand-backs {
   display: flex;
-  gap: 2px;
+  gap: 1.5px;
+}
+
+.opp-hand-backs .mj-tile {
+  width: var(--opp-tile-w);
+  height: var(--opp-tile-h);
 }
 
 .opp-hand-backs.vertical {
   flex-direction: column;
+  gap: 0;
+}
+
+.opp-hand-backs.vertical .mj-tile {
+  width: calc(var(--opp-tile-w) * 1.35);
+  height: 14px;
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+.human-melds-area .mj-tile, .human-flowers-area .mj-tile {
+  width: var(--pool-tile-w);
+  height: var(--pool-tile-h);
 }
 
 /* ================= Bottom (Human) Player Area ================= */
@@ -610,12 +633,16 @@ html, body {
 
 /* Action Bar (吃 / 碰 / 杠 / 胡 / 过) */
 .action-bar-container {
-  min-height: 48px;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
   z-index: 30;
+}
+
+.action-bar-container:empty {
+  display: none;
 }
 
 .action-btn {
@@ -1292,28 +1319,149 @@ html, body {
 /* ================= Compact Screen & Mobile Landscape Tweaks ================= */
 @media (max-height: 520px) {
   :root {
-    --human-tile-w: clamp(30px, 5.2vw, 48px);
-    --pool-tile-w: clamp(15px, 2.4vw, 24px);
-    --opp-tile-w: clamp(16px, 2.6vw, 26px);
+    --human-tile-w: clamp(26px, 4.4vw, 38px);
+    --human-tile-h: calc(var(--human-tile-w) * 1.38);
+    --pool-tile-w: clamp(13px, 1.9vw, 17px);
+    --pool-tile-h: calc(var(--pool-tile-w) * 1.36);
+    --opp-tile-w: clamp(13px, 1.7vw, 17px);
+    --opp-tile-h: calc(var(--opp-tile-w) * 1.36);
   }
-  .compass-disc {
-    width: 86px !important;
-    height: 86px !important;
-  }
-  .timer-number {
-    font-size: 20px !important;
-  }
+
   .top-toolbar {
-    height: 36px !important;
+    height: 30px !important;
+    padding: 0 8px !important;
+  }
+  .app-logo {
+    font-size: 13px !important;
+    gap: 4px !important;
+  }
+  .tb-btn {
+    padding: 2px 7px !important;
+    font-size: 11px !important;
+  }
+  .table-arena {
+    padding: 2px 4px !important;
+  }
+  .table-surface {
+    border-width: 6px !important;
+    border-radius: 14px !important;
+  }
+
+  /* Top player: make avatar, flowers, melds, and hand inline so it occupies minimal vertical height */
+  .seat-container-top {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    padding-top: 2px !important;
+  }
+  .seat-container-top .seat-badge {
+    padding: 2px 8px 2px 4px !important;
   }
   .seat-avatar {
-    width: 36px !important;
-    height: 36px !important;
-    font-size: 15px !important;
+    width: 26px !important;
+    height: 26px !important;
+    font-size: 12px !important;
+  }
+  .seat-name, .seat-score {
+    font-size: 11px !important;
+  }
+  .score-coin {
+    width: 9px !important;
+    height: 9px !important;
+  }
+
+  /* Center Compass & Discard Pools */
+  .center-compass-wrap {
+    margin: 0 !important;
+  }
+  .center-pool-area {
+    gap: 3px !important;
+    margin-top: 0 !important;
+  }
+  .pool-mid-row {
+    gap: 8px !important;
+  }
+  .compass-disc {
+    width: 64px !important;
+    height: 64px !important;
+  }
+  .timer-number {
+    font-size: 16px !important;
+  }
+  .wall-count-badge {
+    font-size: 9px !important;
+    margin-top: 1px !important;
+  }
+  .wind-marker {
+    font-size: 10px !important;
+  }
+
+  /* Left and Right opponents */
+  .seat-container-left, .seat-container-right {
+    gap: 3px !important;
+    padding: 0 4px !important;
+  }
+  .opp-hand-backs.vertical .mj-tile {
+    height: 10px !important;
+  }
+
+  /* Bottom (Human) Player Area */
+  .seat-container-bottom {
+    padding-bottom: 2px !important;
+    gap: 0 !important;
+    position: relative !important;
+  }
+  .human-top-row {
+    position: absolute !important;
+    bottom: calc(var(--human-tile-h) + 4px) !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: calc(100% - 16px) !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    pointer-events: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    z-index: 25 !important;
+  }
+  .human-top-row > * {
+    pointer-events: auto !important;
+  }
+  .human-top-row .seat-badge {
+    padding: 2px 8px 2px 4px !important;
+  }
+  .action-bar-container {
+    position: absolute !important;
+    bottom: calc(var(--human-tile-h) + 8px) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 45 !important;
+    min-height: 0 !important;
+  }
+  .action-bar-container:empty {
+    display: none !important;
   }
   .action-btn {
-    height: 40px !important;
-    font-size: 15px !important;
-    padding: 0 12px !important;
+    height: 32px !important;
+    min-width: 42px !important;
+    font-size: 13px !important;
+    padding: 0 10px !important;
+    border-radius: 16px !important;
+  }
+  .ting-hint-card {
+    position: absolute !important;
+    bottom: calc(var(--human-tile-h) + 6px) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 40 !important;
+    padding: 3px 8px !important;
+    font-size: 11px !important;
+  }
+  .human-hand-row {
+    margin-top: 0 !important;
+    padding: 2px 4px !important;
   }
 }

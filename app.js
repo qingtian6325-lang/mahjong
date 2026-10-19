@@ -973,13 +973,13 @@
 
     if (sec <= 4) {
       numEl.className = 'timer-number urgent';
-      ringEl.className = 'timer-ring-progress urgent';
+      ringEl.setAttribute('class', 'timer-ring-progress urgent');
     } else if (sec <= 8) {
       numEl.className = 'timer-number';
-      ringEl.className = 'timer-ring-progress warning';
+      ringEl.setAttribute('class', 'timer-ring-progress warning');
     } else {
       numEl.className = 'timer-number';
-      ringEl.className = 'timer-ring-progress';
+      ringEl.setAttribute('class', 'timer-ring-progress');
     }
   }
 
@@ -1250,12 +1250,12 @@
 
     var html = '';
     player.hand.forEach(function(t, i) {
-      var isSelected = (S.selectedTile === t);
+      var isSelected = (S.selectedHandIndex === i);
       var isDrawn = (player.lastDrawn === t && i === player.hand.length - 1);
       var extra = (isSelected ? 'selected ' : '') + (isDrawn ? 'drawn-tile ' : '');
       var pillHtml = (isSelected && S.current === ME && S.pendingDiscardResolve) ? '<div class="discard-tap-pill" data-discard="' + t + '">出牌 ⬆</div>' : '';
       var tileStr = Engine.tileHTML(t, extra);
-      html += tileStr.replace('</div></div>', pillHtml + '</div></div>');
+      html += tileStr.replace('data-tile="', 'data-index="' + i + '" data-tile="').replace('</div></div>', pillHtml + '</div></div>');
     });
     handRow.innerHTML = html;
 
@@ -1263,11 +1263,12 @@
     var tileEls = handRow.querySelectorAll('.mj-tile');
     tileEls.forEach(function(el) {
       var t = parseInt(el.getAttribute('data-tile'), 10);
+      var idx = parseInt(el.getAttribute('data-index'), 10);
 
       // Tap click
       el.addEventListener('click', function(e) {
         e.stopPropagation();
-        onHumanTileClick(t);
+        onHumanTileClick(t, idx);
       });
 
       // Mobile Touch drag-to-discard
@@ -1282,6 +1283,7 @@
         var dt = parseInt(pEl.getAttribute('data-discard'), 10);
         if (S.pendingDiscardResolve) {
           var res = S.pendingDiscardResolve;
+          S.selectedHandIndex = -1;
           S.selectedTile = null;
           hideTingTooltip();
           clearHighlightMatchingTiles();
@@ -1345,6 +1347,7 @@
       // Dragged up by > 45px -> Discard immediately!
       if (deltaY < -45 && S.current === ME && S.pendingDiscardResolve) {
         var resolve = S.pendingDiscardResolve;
+        S.selectedHandIndex = -1;
         S.selectedTile = null;
         hideTingTooltip();
         clearHighlightMatchingTiles();
@@ -1353,22 +1356,24 @@
     });
   }
 
-  function onHumanTileClick(t) {
+  function onHumanTileClick(t, i) {
     if (S.current !== ME || !S.pendingDiscardResolve) {
       highlightMatchingTiles(t);
       Audio.playTileClick();
       return;
     }
 
-    if (S.selectedTile === t) {
+    if (S.selectedHandIndex === i) {
       // Double tap -> Discard!
       var resolve = S.pendingDiscardResolve;
+      S.selectedHandIndex = -1;
       S.selectedTile = null;
       hideTingTooltip();
       clearHighlightMatchingTiles();
       resolve(t);
     } else {
       // First tap -> Select & Ting hint & Highlight
+      S.selectedHandIndex = i;
       S.selectedTile = t;
       Audio.playTileClick();
       render();

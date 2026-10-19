@@ -9,6 +9,9 @@ Thumbs.db
 node_modules/
 dist/
 
+# Test artifacts
+test-*.png
+
 # IDE
 .vscode/
 .idea/
