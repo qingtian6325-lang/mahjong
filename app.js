@@ -1813,8 +1813,9 @@
 
   function highlightMatchingTiles(t) {
     clearHighlightMatchingTiles();
-    var allTiles = document.querySelectorAll('.table-surface .mj-tile[data-tile="' + t + '"]');
-    allTiles.forEach(function(el) {
+    // 仅高亮桌面上（弃牌池与对手明牌区）已打出的同名牌帮助算牌，绝不高亮手牌中的同名牌，防止手牌多张一起发光的误导！
+    var tableTiles = document.querySelectorAll('.discard-pool .mj-tile[data-tile="' + t + '"], .opp-melds .mj-tile[data-tile="' + t + '"], .opp-flowers .mj-tile[data-tile="' + t + '"]');
+    tableTiles.forEach(function(el) {
       el.classList.add('highlight-match');
     });
   }

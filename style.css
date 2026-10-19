@@ -424,8 +424,15 @@ html, body {
   to { filter: drop-shadow(0 0 12px rgba(255, 215, 0, 1)); }
 }
 
-/* Highlighting matching identical tiles on the table */
-.mj-tile.highlight-match {
+/* Highlighting matching identical tiles on the table (仅桌面弃牌池和副露，手牌绝不高亮相同牌) */
+.human-hand-row .mj-tile.highlight-match {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.discard-pool .mj-tile.highlight-match,
+.opp-melds .mj-tile.highlight-match,
+.opp-flowers .mj-tile.highlight-match {
   box-shadow: 0 0 0 2.5px #ffd700, 0 0 12px rgba(255, 215, 0, 0.8) !important;
   transform: scale(1.06) !important;
   z-index: 15 !important;
