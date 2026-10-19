@@ -132,12 +132,20 @@ async function runTests() {
   // TEST 5: Modals Testing (Lobby, Rules, History, Settings)
   console.log('\n[TEST 5] Testing Modals & Controls...');
 
-  // 1. Lobby Modal
+  // 1. Lobby Modal & Multiplayer Ready Controls
   await page.click('#btnLobby');
   await page.waitForTimeout(300);
   const lobbyShown = await page.$eval('#modalLobby', el => el.classList.contains('show'));
   const qrCanvasDrawn = await page.$eval('#lobbyQRCodeCanvas', el => el.width > 0);
   console.log(`- Lobby modal opened: ${lobbyShown}, QR Canvas generated: ${qrCanvasDrawn}`);
+
+  // Test creating room as Host to test ready states
+  await page.click('#btnCreateRoom');
+  await page.waitForTimeout(500);
+  const hasHostTag = await page.$eval('#lobbySeatsGrid', el => el.innerText.includes('房主 (已就绪)'));
+  const hasStartBtn = await page.$eval('#btnStartOnlineGame', el => el.style.display !== 'none');
+  console.log(`- Created room: Host badge shown=${hasHostTag}, Host start button visible=${hasStartBtn}`);
+
   await page.screenshot({ path: 'test-modal-lobby.png' });
   await page.click('#modalLobby .close-btn');
   await page.waitForTimeout(200);

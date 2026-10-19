@@ -1602,6 +1602,9 @@
 
     document.getElementById('btnLobby').addEventListener('click', function() {
       Audio.playButton();
+      var inRoom = (MODE !== 'single');
+      document.getElementById('lobbyCreateJoinArea').style.display = inRoom ? 'none' : 'flex';
+      document.getElementById('lobbyRoomActiveArea').style.display = inRoom ? 'block' : 'none';
       showModal('modalLobby');
     });
 
@@ -1621,9 +1624,14 @@
     // Settle Continue button
     document.getElementById('btnSettleNext').addEventListener('click', function() {
       hideModal('modalSettle');
-      if (MODE !== 'guest') {
+      if (MODE === 'single') {
         if (S) S.round++;
         startRound();
+      } else if (MODE === 'host') {
+        if (S) S.round++;
+        Network.resetAllReady();
+        showModal('modalLobby');
+        showToast('请等待全员准备后开启第 ' + (S ? S.round : 1) + ' 局');
       }
     });
 
@@ -1725,10 +1733,13 @@
         document.getElementById('lobbyShareLink').value = shareLink;
         document.getElementById('btnLeaveRoom').style.display = 'inline-flex';
 
+        document.getElementById('lobbyCreateJoinArea').style.display = 'none';
+        document.getElementById('lobbyRoomActiveArea').style.display = 'block';
+
         // Render QR Code
         var qrCanvas = document.getElementById('lobbyQRCodeCanvas');
         if (window.drawQRCode && qrCanvas) {
-          window.drawQRCode(shareLink, qrCanvas, 140);
+          window.drawQRCode(shareLink, qrCanvas, 110);
         }
 
         showModal('modalLobby');
@@ -1800,6 +1811,11 @@
       onChatReceived: function(msg) {
         showSpeechBubble(msg.seat, msg.content);
       },
+      onGameStarted: function() {
+        hideModal('modalLobby');
+        hideModal('modalSettle');
+        showToast('全员已就绪，游戏开始！');
+      },
       onHostGone: function() {
         showToast('房主已离开，房间已关闭');
         leaveOnlineRoom();
@@ -1814,32 +1830,129 @@
     var seatsEl = document.getElementById('lobbySeatsGrid');
     if (!seatsEl || !payload.seats) return;
 
+    var isHost = (Network.currentSession && Network.currentSession.isHost);
+    var startBtn = document.getElementById('btnStartOnlineGame');
+    var readyBtn = document.getElementById('btnToggleReady');
+    var hintEl = document.getElementById('lobbyStatusHint');
+
+    // 1. Render Seat Cards with Ready Badges
     var html = '';
     payload.seats.forEach(function(s, idx) {
       if (!s) {
         html += '<div class="lobby-seat-card empty">' +
           '<div class="seat-avatar" style="background:#555;">' + (idx + 1) + '</div>' +
-          '<div><div style="font-size:13px;color:#aaa;">空位</div><div class="status-tag">机器人补位</div></div>' +
+          '<div><div style="font-size:13px;color:#aaa;">空位</div><span class="status-tag">🤖 机器人补位</span></div>' +
         '</div>';
+      } else if (idx === 0) {
+        html += '<div class="lobby-seat-card host">' +
+          '<div class="seat-avatar av-0">' + s.name.charAt(0) + '</div>' +
+          '<div><div style="font-weight:bold;">' + s.name + '</div>' +
+          '<span class="status-tag" style="background:#d4af37;color:#111;font-weight:bold;">👑 房主 (已就绪)</span>' +
+          '</div></div>';
       } else {
-        html += '<div class="lobby-seat-card">' +
+        var isReady = !!s.ready;
+        var cardClass = 'lobby-seat-card ' + (isReady ? 'ready' : 'unready');
+        var tagHtml = isReady ?
+          '<span class="status-tag" style="background:#2ecc71;color:#fff;font-weight:bold;">✅ 已准备</span>' :
+          '<span class="status-tag" style="background:rgba(231,76,60,0.25);color:#ff7675;font-weight:bold;">⏳ 未准备</span>';
+
+        html += '<div class="' + cardClass + '">' +
           '<div class="seat-avatar av-' + idx + '">' + s.name.charAt(0) + '</div>' +
           '<div><div style="font-weight:bold;">' + s.name + '</div>' +
-          (s.host ? '<span class="status-tag" style="background:#d4af37;color:#111;">房主</span>' : '<span class="status-tag">在线</span>') +
+          tagHtml +
           '</div></div>';
       }
     });
     seatsEl.innerHTML = html;
 
-    var startBtn = document.getElementById('btnStartOnlineGame');
-    if (startBtn) {
-      var isHost = (Network.currentSession && Network.currentSession.isHost);
-      startBtn.style.display = isHost ? 'block' : 'none';
+    // 2. Check ready status of all seated human guests (seats 1, 2, 3)
+    var seatedGuests = payload.seats.filter(function(s, i) { return s && i !== 0; });
+    var unreadyGuests = seatedGuests.filter(function(s) { return !s.ready; });
+    var allReady = (unreadyGuests.length === 0);
+
+    // 3. Host Controls: must wait until all players are ready!
+    if (isHost) {
+      if (startBtn) startBtn.style.display = 'block';
+      if (readyBtn) readyBtn.style.display = 'none';
+
+      if (allReady) {
+        startBtn.disabled = false;
+        startBtn.classList.remove('disabled');
+        startBtn.textContent = '🚀 开始游戏（全员已就绪' + (seatedGuests.length > 0 ? '' : '，空位由机器人补齐') + '）';
+        if (hintEl) {
+          hintEl.textContent = '✨ 所有玩家均已准备完毕，房主可随时开局！';
+          hintEl.style.color = '#2ecc71';
+        }
+      } else {
+        startBtn.disabled = true;
+        startBtn.classList.add('disabled');
+        var readyCount = seatedGuests.length - unreadyGuests.length;
+        startBtn.textContent = '⏳ 等待玩家准备中 (' + readyCount + '/' + seatedGuests.length + ' 就绪)';
+        if (hintEl) {
+          hintEl.textContent = '还有 ' + unreadyGuests.length + ' 位玩家尚未准备，须等待全员准备后方可开始对战';
+          hintEl.style.color = '#ff9f43';
+        }
+      }
+
       startBtn.onclick = function() {
+        if (!allReady) {
+          Audio.playButton();
+          showToast('尚有玩家未准备，请等待全员准备！');
+          return;
+        }
+        Audio.playButton();
         hideModal('modalLobby');
-        if (Network.currentSession) Network.currentSession.started = true;
-        Network.broadcastLobby();
+        Network.broadcastStartGame();
         startNewGame();
+      };
+    } else {
+      // 4. Guest Controls: show Ready Toggle Button
+      if (startBtn) startBtn.style.display = 'none';
+      if (readyBtn) readyBtn.style.display = 'block';
+
+      var mySeatObj = (ME >= 0 && payload.seats[ME]) ? payload.seats[ME] : null;
+      var amIReady = mySeatObj ? !!mySeatObj.ready : false;
+
+      if (amIReady) {
+        readyBtn.className = 'ghost-btn';
+        readyBtn.textContent = '✅ 已准备 (点击取消准备)';
+        readyBtn.style.background = 'rgba(46, 204, 113, 0.2)';
+        readyBtn.style.borderColor = '#2ecc71';
+        readyBtn.style.color = '#2ecc71';
+        readyBtn.style.width = '100%';
+        readyBtn.style.padding = '12px 20px';
+        readyBtn.style.fontSize = '16px';
+        readyBtn.style.fontWeight = 'bold';
+
+        if (hintEl) {
+          if (allReady) {
+            hintEl.textContent = '✨ 全员准备完毕，等待房主开始对战...';
+            hintEl.style.color = '#2ecc71';
+          } else {
+            hintEl.textContent = '你已准备，正在等待其他玩家准备 (' + (seatedGuests.length - unreadyGuests.length) + '/' + seatedGuests.length + ')';
+            hintEl.style.color = 'var(--text-muted)';
+          }
+        }
+      } else {
+        readyBtn.className = 'primary-btn orange';
+        readyBtn.textContent = '✋ 点击准备 (Ready)';
+        readyBtn.style.background = '';
+        readyBtn.style.borderColor = '';
+        readyBtn.style.color = '';
+        readyBtn.style.width = '100%';
+        readyBtn.style.padding = '12px 20px';
+        readyBtn.style.fontSize = '16px';
+        readyBtn.style.fontWeight = 'bold';
+
+        if (hintEl) {
+          hintEl.textContent = '⚠️ 请先点击上方按钮准备，全员就绪后房主才可开局';
+          hintEl.style.color = '#ff9f43';
+        }
+      }
+
+      readyBtn.onclick = function() {
+        Audio.playButton();
+        Network.setMyReady(!amIReady);
       };
     }
   }
@@ -1850,6 +1963,8 @@
     ME = 0;
     VIEW = 0;
     document.getElementById('btnLeaveRoom').style.display = 'none';
+    document.getElementById('lobbyCreateJoinArea').style.display = 'flex';
+    document.getElementById('lobbyRoomActiveArea').style.display = 'none';
     showToast('已回到单机模式');
     startNewGame();
   }

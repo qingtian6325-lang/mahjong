@@ -83,7 +83,7 @@
       };
 
       if (asHost) {
-        session.seats[0] = { clientId: myId, name: session.myName, online: true, host: true };
+        session.seats[0] = { clientId: myId, name: session.myName, online: true, host: true, ready: true };
       }
 
       var client = window.supabase.createClient(SB_URL, SB_KEY);
@@ -104,6 +104,16 @@
 
       ch.on('broadcast', { event: 'join' }, function(m) {
         if (session && session.isHost && m.payload) MahjongNetwork.onHostJoin(m.payload);
+      });
+
+      ch.on('broadcast', { event: 'ready' }, function(m) {
+        if (session && session.isHost && m.payload) MahjongNetwork.onHostGuestReady(m.payload);
+      });
+
+      ch.on('broadcast', { event: 'start-game' }, function(m) {
+        if (session && !session.isHost && session.handlers.onGameStarted) {
+          session.handlers.onGameStarted(m.payload);
+        }
       });
 
       ch.on('broadcast', { event: 'lobby' }, function(m) {
@@ -287,7 +297,7 @@
       // 4. Fresh empty seat
       for (var k = 1; k < 4; k++) {
         if (!session.seats[k]) {
-          session.seats[k] = { clientId: p.clientId, name: clean, online: true, host: false };
+          session.seats[k] = { clientId: p.clientId, name: clean, online: true, host: false, ready: false };
           this.send('assign', { to: p.clientId, seat: k });
           this.broadcastLobby();
           return;
@@ -295,6 +305,47 @@
       }
 
       this.send('room-note', { to: p.clientId, text: '房间已满（4人），无法加入' });
+    },
+
+    onHostGuestReady: function(p) {
+      if (!session || !session.isHost || !p || !p.clientId) return;
+      for (var i = 1; i < 4; i++) {
+        var s = session.seats[i];
+        if (s && s.clientId === p.clientId) {
+          s.ready = !!p.ready;
+          this.broadcastLobby();
+          return;
+        }
+      }
+    },
+
+    setMyReady: function(ready) {
+      if (!session) return;
+      session.myReady = !!ready;
+      if (session.isHost) {
+        this.broadcastLobby();
+      } else {
+        this.send('ready', {
+          clientId: session.myId,
+          seat: session.mySeat,
+          ready: session.myReady
+        });
+      }
+    },
+
+    broadcastStartGame: function() {
+      if (!session || !session.isHost) return;
+      session.started = true;
+      this.send('start-game', { code: session.code, time: Date.now() });
+      this.broadcastLobby();
+    },
+
+    resetAllReady: function() {
+      if (!session || !session.isHost) return;
+      for (var i = 1; i < 4; i++) {
+        if (session.seats[i]) session.seats[i].ready = false;
+      }
+      this.broadcastLobby();
     },
 
     broadcastLobby: function() {
@@ -308,7 +359,8 @@
             name: s.name,
             clientId: s.clientId,
             online: !!(session.presenceKeys && session.presenceKeys[s.clientId]) || i === 0,
-            host: i === 0
+            host: i === 0,
+            ready: i === 0 ? true : !!s.ready
           };
         })
       };
