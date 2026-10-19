@@ -1,0 +1,14 @@
+# Logs and temp files
+*.log
+*.original.*
+*.backup.*
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+dist/
+
+# IDE
+.vscode/
+.idea/

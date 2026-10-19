@@ -1,0 +1,19 @@
+{
+  "name": "麻将大师 - 豪华翡翠雀台",
+  "short_name": "打麻将",
+  "description": "四人对局·「飞」万能牌·花杠计分·听牌推荐·真实牌桌音效·支持多端联机",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "theme_color": "#072a19",
+  "background_color": "#05140d",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
