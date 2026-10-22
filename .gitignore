@@ -26,3 +26,7 @@ www/
 # IDE
 .vscode/
 .idea/
+
+# Agent skills & submodules
+.agents/
+music-player/
