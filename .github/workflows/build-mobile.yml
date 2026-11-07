@@ -47,13 +47,13 @@ jobs:
       - name: Prepare Android APK Output
         run: |
           mkdir -p build-artifacts
-          cp android/app/build/outputs/apk/debug/app-debug.apk build-artifacts/Mahjong-v2.5.2.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk build-artifacts/Mahjong-v2.5.3.apk
 
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Mahjong-Android-APK
-          path: build-artifacts/Mahjong-v2.5.2.apk
+          path: build-artifacts/Mahjong-v2.5.3.apk
           if-no-files-found: error
 
   build-ios:
@@ -102,10 +102,10 @@ jobs:
             cd "$APP_DIR"
             mkdir -p Payload
             cp -r App.app Payload/
-            zip -qr Mahjong-iOS-v2.5.2.ipa Payload
+            zip -qr Mahjong-iOS-v2.5.3.ipa Payload
             zip -qr Mahjong-iOS-App.zip App.app
             cd -
-            cp "$APP_DIR/Mahjong-iOS-v2.5.2.ipa" build-artifacts/
+            cp "$APP_DIR/Mahjong-iOS-v2.5.3.ipa" build-artifacts/
             cp "$APP_DIR/Mahjong-iOS-App.zip" build-artifacts/
             ls -lh build-artifacts/
           else
@@ -118,7 +118,7 @@ jobs:
         with:
           name: Mahjong-iOS-IPA
           path: |
-            build-artifacts/Mahjong-iOS-v2.5.2.ipa
+            build-artifacts/Mahjong-iOS-v2.5.3.ipa
             build-artifacts/Mahjong-iOS-App.zip
           if-no-files-found: error
 
@@ -147,27 +147,34 @@ jobs:
       - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v2.5.2
-          name: "打麻将 Mahjong v2.5.2 (iOS & Android & Web)"
+          tag_name: v2.5.3
+          name: "打麻将 Mahjong v2.5.3 (iOS & Android & Web)"
           body: |
-            ### 🀄 打麻将 (Mahjong Master) 全平台最新官方版本 v2.5.2
+            ### 🀄 打麻将 (Mahjong Master) 全平台最新官方版本 v2.5.3
             
             云端 GitHub Actions 全自动多平台编译产物 (macOS-14 Apple Silicon Xcode + Ubuntu Android SDK)：
 
             #### 📦 下载文件 (Direct Downloads):
-            - **Android 安装包**: [`Mahjong-v2.5.2.apk`](https://github.com/qingtian6325-lang/mahjong/releases/download/v2.5.2/Mahjong-v2.5.2.apk) (支持 Android 8.0 ~ Android 15，极速下载直接安装)
-            - **iOS 安装包 (IPA)**: [`Mahjong-iOS-v2.5.2.ipa`](https://github.com/qingtian6325-lang/mahjong/releases/download/v2.5.2/Mahjong-iOS-v2.5.2.ipa) (支持 TrollStore / AltStore / Sideloadly / 巨魔 / 证书自签名安装)
-            - **iOS 开发者免签包**: [`Mahjong-iOS-App.zip`](https://github.com/qingtian6325-lang/mahjong/releases/download/v2.5.2/Mahjong-iOS-App.zip)
+            - **Android 安装包**: [`Mahjong-v2.5.3.apk`](https://github.com/qingtian6325-lang/mahjong/releases/download/v2.5.3/Mahjong-v2.5.3.apk) (支持 Android 8.0 ~ Android 15，极速下载直接安装)
+            - **iOS 安装包 (IPA)**: [`Mahjong-iOS-v2.5.3.ipa`](https://github.com/qingtian6325-lang/mahjong/releases/download/v2.5.3/Mahjong-iOS-v2.5.3.ipa) (支持 SideStore / TrollStore / AltStore / Sideloadly / 巨魔 / 证书自签名安装)
+            - **iOS 开发者免签包**: [`Mahjong-iOS-App.zip`](https://github.com/qingtian6325-lang/mahjong/releases/download/v2.5.3/Mahjong-iOS-App.zip)
             - **Web 在线畅玩**: [https://qingtian6325-lang.github.io/mahjong/](https://qingtian6325-lang.github.io/mahjong/) (支持 Safari / Chrome 一键【添加到主屏幕】作为原生 PWA 使用)
 
-            #### ✨ v2.5.2 核心升级:
-            1. **👤 玩家自定义雀神大名 & 留空系统自动分配**:
-               - 玩家可随时自由自定义大名（模式选择、联机大厅、设置面板均可直接输入）。
-               - 遵从「若未设置才自动分配」原则：输入框默认洁净留空，仅在玩家未输入时才自动抽取好运麻将封号（如「雀仙发哥」「十三幺」「逢赌必赢」等）。
-               - 局内支持直接点击底部自己头像/名字呼出修改弹窗，牌桌头像首字与昵称实时同步！
-            2. **🗣️ 全真普通话语音报牌与动作音效**：打出任何手牌报牌名，吃碰杠胡自摸语音呐喊，局内短句真人朗读。
-            3. **🀄 规则裁决优先级与防丢胡保障**：胡牌最大、胡/碰选择弹窗、吃碰必须打牌与吃牌禁打同面牌规则。
-            4. **🔄 Web & PWA 强力更新机制**：设置面板一键清空旧版缓存强制刷新。
+            #### ✨ v2.5.3 核心升级 (重大更新):
+            1. **🀄 谁胡谁当庄家 (Winner Becomes Dealer)**:
+               - 每局胜利者自动成为下一局庄家，庄家标志【庄】同步转移到胡牌玩家头像上！
+               - 新一局庄家首先摸牌并由庄家打出第一张牌。
+               - 若牌墙摸完产生流局，则庄家连庄（庄家不变），严格符合正统麻将规则。
+            2. **📱 直屏自动全屏横向显示 & 手牌完全可见无遮挡**:
+               - 废除原强制阻断全屏提示「请横屏放置手机」，竖屏握持手机时自动90度全屏旋转为横向牌桌视野，单手/双手竖握手机直接享受大屏畅爽牌局！
+               - 顶部工具栏新增【🔄 旋转】快捷按钮，可随时切换「自适应横屏 / 强制横屏 / 保持竖屏」。
+               - 深度优化横屏手牌底部安全区布局（Safe Area Inset），彻底解决底部手牌被系统手势条或浏览器地址栏遮挡的问题，14张手牌100%全显且极易轻触出牌！
+            3. **🎉 其他玩家与联机自摸完美支持**:
+               - 彻底修复联机对战中其他玩家与客端点击自摸被房主误拒绝的严重协议Bug！
+               - 任何人摸牌自摸时，全网客户端实时同步播放自摸特效、大金鼓庆典音效与语音喊话，结算面板清晰标明「自摸胡 · 三家各付4分」。
+            4. **🎵 声音起伏有调、感情生动鲜活**:
+               - 彻底革新死板机械语音：根据牌桌不同角色注入独立生动语调与高低音（自己清脆元气、阿强豪爽大叔、小美甜美娇俏、老王老道沉稳）。
+               - 升级骨瓷麻将扣桌啪音（高频清脆碰击+台呢沉厚共鸣）、进阶碰/杠铜钟共振以及大满贯自摸庆典音效！
           files: |
             dist/*
         continue-on-error: true

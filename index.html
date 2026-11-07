@@ -14,14 +14,14 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   <title>麻将大师 · 豪华翡翠雀台</title>
-  <link rel="stylesheet" href="./style.css?v=2.5.2" />
+  <link rel="stylesheet" href="./style.css?v=2.5.3" />
 </head>
 <body>
-  <!-- Mobile Portrait Orientation Notice -->
-  <div id="orientationGuard">
+  <!-- Mobile Orientation (Auto-rotated via CSS; Guard disabled for seamless play) -->
+  <div id="orientationGuard" style="display:none !important;">
     <div class="rotate-phone-icon"></div>
-    <div class="rotate-title">请横屏放置手机</div>
-    <div class="rotate-desc">为了提供最广阔的专业牌桌视野与大尺寸麻将手感，请开启手机自动旋转并横向握持。</div>
+    <div class="rotate-title">麻将大师 · 全屏雀台</div>
+    <div class="rotate-desc">牌桌已自动自适应横向视野，直屏横屏均可畅玩！</div>
   </div>
 
   <div id="app">
@@ -33,6 +33,7 @@
       </div>
       <div class="toolbar-actions">
         <button class="tb-btn active" id="btnChooseMode" title="选择游戏模式">🏠 模式</button>
+        <button class="tb-btn" id="btnRotateToggle" title="切换屏幕旋转方向">🔄 旋转</button>
         <button class="tb-btn" id="btnLobby">🌐 联机对战</button>
         <button class="tb-btn" id="btnHistory">📊 战绩</button>
         <button class="tb-btn" id="btnRules">📜 规则</button>
@@ -553,24 +554,28 @@
   <!-- Supabase Realtime SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Game Scripts -->
-  <script src="./audio.js?v=2.5.2"></script>
-  <script src="./engine.js?v=2.5.2"></script>
-  <script src="./network.js?v=2.5.2"></script>
-  <script src="./qr.js?v=2.5.2"></script>
-  <script src="./app.js?v=2.5.2"></script>
+  <script src="./audio.js?v=2.5.3"></script>
+  <script src="./engine.js?v=2.5.3"></script>
+  <script src="./network.js?v=2.5.3"></script>
+  <script src="./qr.js?v=2.5.3"></script>
+  <script src="./app.js?v=2.5.3"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=2.5.2').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=2.5.3').then(function(reg) {
           reg.update();
         }).catch(function(e) {
           console.log('SW register failed: ', e);
         });
       });
+      var hasReloadedSW = false;
       navigator.serviceWorker.addEventListener('controllerchange', function() {
-        window.location.reload();
+        if (!hasReloadedSW) {
+          hasReloadedSW = true;
+          window.location.reload();
+        }
       });
     }
   </script>

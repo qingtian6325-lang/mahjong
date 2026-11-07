@@ -53,63 +53,9 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
 
-/* ================= Screen Orientation Guard (Mobile Portrait Prompt) ================= */
+/* ================= Screen Orientation Guard & Seamless Auto-Rotation ================= */
 #orientationGuard {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  background: radial-gradient(circle at center, #0e3b24, #05150d);
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 18px;
-  padding: 24px;
-  text-align: center;
-}
-
-@media (orientation: portrait) and (max-width: 900px) {
-  #orientationGuard {
-    display: flex;
-  }
-}
-
-.rotate-phone-icon {
-  width: 72px;
-  height: 72px;
-  border: 4px solid var(--gold);
-  border-radius: 14px;
-  animation: phoneRotate 2.4s ease-in-out infinite;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 25px rgba(212, 175, 55, 0.4);
-}
-
-.rotate-phone-icon::after {
-  content: '🀄';
-  font-size: 32px;
-}
-
-@keyframes phoneRotate {
-  0% { transform: rotate(0deg); }
-  40% { transform: rotate(-90deg); }
-  60% { transform: rotate(-90deg); }
-  100% { transform: rotate(0deg); }
-}
-
-.rotate-title {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--gold-light);
-  letter-spacing: 1px;
-}
-
-.rotate-desc {
-  font-size: 14px;
-  color: var(--text-muted);
-  max-width: 280px;
-  line-height: 1.6;
+  display: none !important;
 }
 
 /* ================= Main App Container ================= */
@@ -121,6 +67,55 @@ html, body {
   position: relative;
   background: #06180f;
   overflow: hidden;
+}
+
+/* Auto-rotate on mobile portrait so holding phone vertically displays full landscape table (直屏自动横屏) */
+@media (orientation: portrait) {
+  body:not(.orient-force-portrait) {
+    overflow: hidden !important;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+  }
+
+  body:not(.orient-force-portrait) #app {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100dvh !important;
+    height: 100dvw !important;
+    transform-origin: 0 0 !important;
+    transform: rotate(90deg) translateY(-100%) !important;
+    overflow: hidden !important;
+  }
+}
+
+/* Force Landscape override (90°旋转) */
+body.orient-force-landscape {
+  overflow: hidden !important;
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+}
+body.orient-force-landscape #app {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100dvh !important;
+  height: 100dvw !important;
+  transform-origin: 0 0 !important;
+  transform: rotate(90deg) translateY(-100%) !important;
+  overflow: hidden !important;
+}
+
+/* Force Portrait override (标准直屏不旋转) */
+body.orient-force-portrait #app {
+  position: relative !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  transform: none !important;
 }
 
 /* Header Toolbar */
@@ -1740,12 +1735,12 @@ html, body {
 /* ================= Compact Screen & Mobile Landscape Tweaks ================= */
 @media (max-height: 520px) {
   :root {
-    --human-tile-w: clamp(26px, 4.4vw, 38px);
-    --human-tile-h: calc(var(--human-tile-w) * 1.38);
-    --pool-tile-w: clamp(13px, 1.9vw, 17px);
-    --pool-tile-h: calc(var(--pool-tile-w) * 1.36);
-    --opp-tile-w: clamp(13px, 1.7vw, 17px);
-    --opp-tile-h: calc(var(--opp-tile-w) * 1.36);
+    --human-tile-w: clamp(24px, 3.8vw, 36px);
+    --human-tile-h: calc(var(--human-tile-w) * 1.34);
+    --pool-tile-w: clamp(12px, 1.7vw, 16px);
+    --pool-tile-h: calc(var(--pool-tile-w) * 1.32);
+    --opp-tile-w: clamp(12px, 1.6vw, 16px);
+    --opp-tile-h: calc(var(--opp-tile-w) * 1.32);
   }
 
   .top-toolbar {
@@ -1797,18 +1792,18 @@ html, body {
     margin: 0 !important;
   }
   .center-pool-area {
-    gap: 3px !important;
+    gap: 2px !important;
     margin-top: 0 !important;
   }
   .pool-mid-row {
-    gap: 8px !important;
+    gap: 6px !important;
   }
   .compass-disc {
-    width: 64px !important;
-    height: 64px !important;
+    width: 48px !important;
+    height: 48px !important;
   }
   .timer-number {
-    font-size: 16px !important;
+    font-size: 13px !important;
   }
   .wall-count-badge {
     font-size: 9px !important;
@@ -1829,9 +1824,10 @@ html, body {
 
   /* Bottom (Human) Player Area */
   .seat-container-bottom {
-    padding-bottom: 2px !important;
+    padding-bottom: max(4px, env(safe-area-inset-bottom, 4px)) !important;
     gap: 0 !important;
     position: relative !important;
+    flex-shrink: 0 !important;
   }
   .human-top-row {
     position: absolute !important;
@@ -1888,6 +1884,8 @@ html, body {
   .human-hand-row {
     margin-top: 0 !important;
     padding: 2px 4px !important;
+    gap: 1.5px !important;
+    flex-shrink: 0 !important;
   }
 
   /* Compact Mode Select for Mobile Landscape */

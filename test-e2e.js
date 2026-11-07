@@ -41,7 +41,10 @@ async function runTests() {
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 
-  const page = await browser.newPage();
+  const context = await browser.newContext({
+    serviceWorkers: 'block'
+  });
+  const page = await context.newPage();
   const consoleErrors = [];
   page.on('console', msg => {
     if (msg.type() === 'error') {
@@ -129,16 +132,37 @@ async function runTests() {
   await page.screenshot({ path: 'test-iphone-landscape.png' });
   console.log('- iPhone Landscape screenshot saved: test-iphone-landscape.png');
 
-  // TEST 4: Mobile Portrait Orientation Guard (390x844)
-  console.log('\n[TEST 4] Testing Mobile Portrait (390x844) Orientation Guard...');
+  // TEST 4: Mobile Portrait Auto-Rotation & Seamless Fullscreen View (390x844)
+  console.log('\n[TEST 4] Testing Mobile Portrait (390x844) Auto-Rotation & Hand Tiles Visibility...');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(400);
 
-  const guardVisible = await page.$eval('#orientationGuard', el => {
-    return window.getComputedStyle(el).display !== 'none';
+  const guardHidden = await page.$eval('#orientationGuard', el => {
+    return window.getComputedStyle(el).display === 'none';
   });
-  console.log(`- Orientation guard displayed on mobile portrait: ${guardVisible}`);
-  await page.screenshot({ path: 'test-portrait-guard.png' });
+  console.log(`- Orientation guard disabled for seamless play: ${guardHidden}`);
+  if (!guardHidden) throw new Error('Orientation guard should be hidden to allow auto-rotation in portrait!');
+
+  // Check rotated app container dimensions in portrait
+  const appBounding = await page.$eval('#app', el => {
+    const r = el.getBoundingClientRect();
+    return { width: Math.round(r.width), height: Math.round(r.height), left: Math.round(r.left), top: Math.round(r.top) };
+  });
+  console.log(`- Rotated #app container bounds on portrait screen: ${JSON.stringify(appBounding)} (Expected: ~390x844)`);
+
+  // Verify hand tiles are fully visible and not clipped
+  const handTilesVisible = await page.$eval('#humanHandRow', el => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  });
+  console.log(`- Hand tiles fully visible and rendered on portrait mobile: ${handTilesVisible}`);
+
+  // Test rotation button in toolbar
+  const hasRotateBtn = (await page.$('#btnRotateToggle')) !== null;
+  console.log(`- Toolbar orientation toggle button present: ${hasRotateBtn}`);
+
+  await page.screenshot({ path: 'test-portrait-auto-rotated.png' });
+  console.log('- Mobile portrait auto-rotated screenshot saved: test-portrait-auto-rotated.png');
 
   // Switch back to Desktop for Modal & Settings Checks
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -474,6 +498,65 @@ async function runTests() {
   }
   await page.click('#modalSettings .modal-close-action');
   await page.waitForTimeout(200);
+
+  // TEST 12: Testing Zimo Hand Victory & Winner Becomes Dealer ("谁胡谁当庄家")
+  console.log('\n[TEST 12] Testing Zimo Victory & Winner Becomes Dealer (谁胡谁当庄家)...');
+
+  // Trigger win for Seat 2 (千王小美) with Zimo
+  await page.evaluate(() => {
+    const app = window.MahjongApp;
+    if (app && app.endRoundWin) {
+      app.endRoundWin(2, 2, true);
+    }
+  });
+
+  // Wait 1300ms for endRoundWin animation and settlement modal display
+  await page.waitForTimeout(1400);
+
+  const test12Results = await page.evaluate(() => {
+    const app = window.MahjongApp;
+    const sAfter = app ? app.getGameState() : null;
+    const newDealerAfterWin = sAfter ? sAfter.dealer : -1;
+    const isZimoRecorded = sAfter ? sAfter.isZimo : false;
+    const winnerSeatRecorded = sAfter ? sAfter.winnerSeat : -1;
+
+    // Check dealer tag on table for seat 2 (Top opponent)
+    const dealerTagTop = document.getElementById('dealerTag_top');
+    const isDealerTagTopVisible = dealerTagTop && dealerTagTop.style.display !== 'none';
+
+    // Check Settlement modal contents
+    const settleTitle = document.getElementById('settleTitle') ? document.getElementById('settleTitle').textContent : '';
+    const settleSub = document.getElementById('settleSub') ? document.getElementById('settleSub').textContent : '';
+
+    return {
+      newDealerAfterWin,
+      isZimoRecorded,
+      winnerSeatRecorded,
+      isDealerTagTopVisible,
+      settleTitle,
+      settleSub
+    };
+  });
+
+  console.log(`- Winner becomes dealer: newDealer=${test12Results.newDealerAfterWin} (Expected: 2)`);
+  console.log(`- Zimo flag recorded: isZimo=${test12Results.isZimoRecorded}`);
+  console.log(`- Winner seat recorded: winnerSeat=${test12Results.winnerSeatRecorded}`);
+  console.log(`- Settlement title: "${test12Results.settleTitle}"`);
+  console.log(`- Settlement sub: "${test12Results.settleSub}"`);
+
+  if (test12Results.newDealerAfterWin !== 2) {
+    throw new Error(`Test 12 failed: Winner did not become dealer! Got dealer=${test12Results.newDealerAfterWin}`);
+  }
+  if (!test12Results.isZimoRecorded) {
+    throw new Error('Test 12 failed: isZimo flag was not set to true!');
+  }
+  if (!test12Results.settleSub.includes('自摸')) {
+    throw new Error(`Test 12 failed: Settlement modal did not mention 自摸! Sub="${test12Results.settleSub}"`);
+  }
+
+  // Dismiss settle modal
+  await page.click('#modalSettle .ghost-btn');
+  await page.waitForTimeout(300);
 
   // FINALIZE
   console.log('\n--- TEST SUMMARY ---');

@@ -344,7 +344,7 @@
     S = {
       gen: (S ? S.gen + 1 : 1),
       round: (S && S.round ? S.round : 1),
-      dealer: 0,
+      dealer: (S && typeof S.dealer === 'number' ? S.dealer : 0), // 谁胡谁当庄家，流局则连庄
       scores: (S && S.scores ? S.scores : [0, 0, 0, 0]),
       lastDeltas: null,
       history: (S && S.history ? S.history : []),
@@ -960,7 +960,7 @@
     var act = p.act || {};
     var out = null;
 
-    if (act.type === 'tsumo' && Engine.canWinHand(pl.hand, pl.melds.length)) {
+    if ((act.type === 'tsumo' || act.type === 'hu') && Engine.canWinHand(pl.hand, pl.melds.length)) {
       out = { type: 'tsumo' };
     } else if (act.type === 'kong' && act.kong) {
       out = { type: 'kong', kong: act.kong };
@@ -1012,6 +1012,8 @@
       current: S.current,
       wallCount: S.wall.length,
       over: S.over,
+      isZimo: !!S.isZimo,
+      winnerSeat: (typeof S.winnerSeat === 'number' ? S.winnerSeat : -1),
       scores: S.scores,
       lastDeltas: S.lastDeltas,
       history: S.history,
@@ -1113,13 +1115,27 @@
     render();
 
     if (snap.over && !document.getElementById('modalSettle').classList.contains('show')) {
-      var winnerSeat = -1;
-      if (snap.lastDeltas) {
+      var winnerSeat = (typeof snap.winnerSeat === 'number' && snap.winnerSeat >= 0) ? snap.winnerSeat : -1;
+      if (winnerSeat < 0 && snap.lastDeltas) {
         for (var d = 0; d < 4; d++) {
           if (snap.lastDeltas[d] > 0) winnerSeat = d;
         }
       }
-      showSettlementModal(winnerSeat, false, snap.lastDeltas || [0, 0, 0, 0]);
+      var isZimo = !!snap.isZimo;
+      if (isZimo && winnerSeat >= 0) {
+        showVFX('自摸！');
+        Audio.playZimo();
+        Audio.speakAction('zimo', winnerSeat);
+        showSpeechBubble(winnerSeat, '自摸！');
+        var wName = S.players[winnerSeat] ? S.players[winnerSeat].name : '玩家';
+        showToast('🎉 ' + wName + ' 自摸胡牌！');
+      } else if (!isZimo && winnerSeat >= 0) {
+        showVFX('胡牌！');
+        Audio.playHu();
+        Audio.speakAction('hu', winnerSeat);
+        showSpeechBubble(winnerSeat, '胡牌！');
+      }
+      showSettlementModal(winnerSeat, isZimo, snap.lastDeltas || [0, 0, 0, 0]);
     }
   }
 
@@ -1145,9 +1161,10 @@
       onAction: function(type, kongObj) {
         clearActionBar();
         hideTingTooltip();
+        var actType = (type === 'hu' || type === 'tsumo') ? 'tsumo' : type;
         Network.send('action', {
           from: Network.currentSession.myId,
-          act: { type: type, kong: kongObj }
+          act: { type: actType, kong: kongObj }
         });
       }
     });
@@ -1199,7 +1216,7 @@
         onAction: function(type, kongObj) {
           clearActionBar();
           hideTingTooltip();
-          if (type === 'hu') resolve({ type: 'tsumo' });
+          if (type === 'hu' || type === 'tsumo') resolve({ type: 'tsumo' });
           else if (type === 'kong') resolve({ type: 'kong', kong: kongObj });
         }
       };
@@ -1247,6 +1264,9 @@
   /* ================= Round End & Scoring ================= */
   function endRoundWin(winnerSeat, loserSeat, isZimo) {
     S.over = true;
+    S.dealer = winnerSeat; // 谁胡谁当庄家！下一局由胡牌胜者坐庄出第一张牌
+    S.winnerSeat = winnerSeat;
+    S.isZimo = !!isZimo;
     stopTurnTimer();
 
     var deltas = [0, 0, 0, 0];
@@ -1260,7 +1280,7 @@
       Audio.playZimo();
       Audio.speakAction('自摸', winnerSeat);
       showSpeechBubble(winnerSeat, '自摸！');
-      showToast('🎉 ' + winName + ' 自摸胡牌！');
+      showToast('🎉 ' + winName + ' 自摸胡牌！下局坐庄');
     } else {
       deltas[loserSeat] -= 4;
       deltas[winnerSeat] += 4;
@@ -1274,7 +1294,7 @@
       Audio.playHu();
       Audio.speakAction('胡牌', winnerSeat);
       showSpeechBubble(winnerSeat, '胡牌！');
-      showToast('🎉 ' + winName + ' 胡牌！由 ' + S.players[loserSeat].name + ' 点炮');
+      showToast('🎉 ' + winName + ' 胡牌！由 ' + S.players[loserSeat].name + ' 点炮，下局坐庄');
     }
 
     for (var s = 0; s < 4; s++) S.scores[s] += deltas[s];
@@ -1295,9 +1315,12 @@
 
   function endRoundDraw() {
     S.over = true;
+    S.winnerSeat = -1;
+    S.isZimo = false;
     stopTurnTimer();
+    // 流局庄家连庄（S.dealer保持原样不换庄）
     showVFX('流局');
-    showToast('牌墙已摸完，本局流局（不计分）');
+    showToast('牌墙已摸完，本局流局（庄家连庄）');
     render();
     scheduleSync();
 
@@ -1551,7 +1574,7 @@
     bar.innerHTML = '';
 
     if (opts.canHu) {
-      bar.appendChild(createActionBtn('自摸', 'hu', function() { opts.onAction('hu'); }));
+      bar.appendChild(createActionBtn('自摸', 'hu', function() { opts.onAction('tsumo'); }));
     }
     if (opts.kongs && opts.kongs.length > 0) {
       bar.appendChild(createActionBtn('杠', 'gang', function() {
@@ -2545,7 +2568,68 @@
       });
     }
 
+    // Screen orientation & Auto-rotation control
+    initOrientationControl();
+
     // Do NOT automatically start game here - wait for user to select mode!
+  }
+
+  /* ================= Screen Orientation & Auto-Rotation Control ================= */
+  var currentOrientationMode = 'auto'; // 'auto' | 'landscape' | 'portrait'
+
+  function initOrientationControl() {
+    try {
+      var saved = localStorage.getItem('mj_orientation_mode');
+      if (saved) currentOrientationMode = saved;
+    } catch (e) {}
+
+    applyOrientationMode(currentOrientationMode);
+
+    var btn = document.getElementById('btnRotateToggle');
+    if (btn) {
+      btn.addEventListener('click', function() {
+        Audio.playButton();
+        if (currentOrientationMode === 'auto') {
+          currentOrientationMode = 'landscape';
+        } else if (currentOrientationMode === 'landscape') {
+          currentOrientationMode = 'portrait';
+        } else {
+          currentOrientationMode = 'auto';
+        }
+        try { localStorage.setItem('mj_orientation_mode', currentOrientationMode); } catch (e) {}
+        applyOrientationMode(currentOrientationMode);
+        var tipMap = {
+          'auto': '屏幕旋转：自适应横屏（直屏握持自动全屏横显）',
+          'landscape': '屏幕旋转：强制横屏（90°旋转）',
+          'portrait': '屏幕旋转：标准直屏（0°不旋转）'
+        };
+        showToast(tipMap[currentOrientationMode]);
+      });
+    }
+
+    window.addEventListener('resize', function() {
+      applyOrientationMode(currentOrientationMode);
+    });
+  }
+
+  function applyOrientationMode(mode) {
+    document.body.classList.remove('orient-auto', 'orient-force-landscape', 'orient-force-portrait');
+    if (mode === 'landscape') {
+      document.body.classList.add('orient-force-landscape');
+    } else if (mode === 'portrait') {
+      document.body.classList.add('orient-force-portrait');
+    } else {
+      document.body.classList.add('orient-auto');
+    }
+    var btn = document.getElementById('btnRotateToggle');
+    if (btn) {
+      var labelMap = {
+        'auto': '🔄 旋转',
+        'landscape': '🔄 强制横屏',
+        'portrait': '🔄 保持竖屏'
+      };
+      btn.textContent = labelMap[mode] || '🔄 旋转';
+    }
   }
 
   /* ================= Multiplayer Connection ================= */
@@ -2858,6 +2942,10 @@
 
   window.MahjongApp = {
     startNewGame: startNewGame,
-    render: render
+    render: render,
+    getGameState: function() { return S; },
+    endRoundWin: endRoundWin,
+    endRoundDraw: endRoundDraw,
+    startRound: startRound
   };
 })();

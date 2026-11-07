@@ -297,20 +297,20 @@
       var gain = ctx.createGain();
 
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(1800, now);
-      osc.frequency.exponentialRampToValueAtTime(300, now + 0.04);
+      osc.frequency.setValueAtTime(2200, now);
+      osc.frequency.exponentialRampToValueAtTime(450, now + 0.035);
 
-      gain.gain.setValueAtTime(0.25, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
       osc.start(now);
-      osc.stop(now + 0.045);
+      osc.stop(now + 0.04);
     },
 
-    // 2. Tile discard slap on felt table (啪！/ 哒！)
+    // 2. Authentic bone porcelain tile discard slap on felt table (清脆骨瓷扣桌啪！带台呢回响)
     playTileDrop: function() {
       if (isMuted) return;
       var ctx = getAudioContext();
@@ -318,130 +318,156 @@
 
       var now = ctx.currentTime;
 
-      // Heavy body resonance (table thump)
+      // Heavy body resonance (table thump / 台呢沉厚共鸣)
       var osc1 = ctx.createOscillator();
       var gain1 = ctx.createGain();
       osc1.type = 'triangle';
-      osc1.frequency.setValueAtTime(260, now);
-      osc1.frequency.exponentialRampToValueAtTime(70, now + 0.09);
-      gain1.gain.setValueAtTime(0.65, now);
-      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+      osc1.frequency.setValueAtTime(320, now);
+      osc1.frequency.exponentialRampToValueAtTime(55, now + 0.085);
+      gain1.gain.setValueAtTime(0.75, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.085);
       osc1.connect(gain1);
       gain1.connect(ctx.destination);
       osc1.start(now);
-      osc1.stop(now + 0.095);
+      osc1.stop(now + 0.09);
 
-      // Sharp ivory click transient
+      // Sharp porcelain ivory click transient (清脆骨牌接触瞬间高频爆音)
       var osc2 = ctx.createOscillator();
       var gain2 = ctx.createGain();
       osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(1600, now);
-      osc2.frequency.exponentialRampToValueAtTime(450, now + 0.05);
-      gain2.gain.setValueAtTime(0.5, now);
-      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      osc2.frequency.setValueAtTime(2800, now);
+      osc2.frequency.exponentialRampToValueAtTime(650, now + 0.035);
+      gain2.gain.setValueAtTime(0.6, now);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
       osc2.connect(gain2);
       gain2.connect(ctx.destination);
       osc2.start(now);
-      osc2.stop(now + 0.055);
+      osc2.stop(now + 0.04);
+
+      // Wood table click overtone
+      var osc3 = ctx.createOscillator();
+      var gain3 = ctx.createGain();
+      osc3.type = 'triangle';
+      osc3.frequency.setValueAtTime(1150, now);
+      osc3.frequency.exponentialRampToValueAtTime(280, now + 0.045);
+      gain3.gain.setValueAtTime(0.35, now);
+      gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+      osc3.connect(gain3);
+      gain3.connect(ctx.destination);
+      osc3.start(now);
+      osc3.stop(now + 0.05);
     },
 
-    // 3. Chi (吃) - Pleasant rising chime
+    // 3. Chi (吃) - Pleasant rising musical chime with vibrato
     playChi: function() {
       if (isMuted) return;
       var ctx = getAudioContext();
       if (!ctx) return;
       var now = ctx.currentTime;
 
-      [523.25, 659.25].forEach(function(freq, i) {
+      [523.25, 659.25, 783.99].forEach(function(freq, i) {
         var osc = ctx.createOscillator();
         var gain = ctx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, now + i * 0.08);
-        gain.gain.setValueAtTime(0.35, now + i * 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.25);
+        osc.frequency.setValueAtTime(freq, now + i * 0.065);
+        gain.gain.setValueAtTime(0.38, now + i * 0.065);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.065 + 0.28);
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start(now + i * 0.08);
-        osc.stop(now + i * 0.08 + 0.26);
+        osc.start(now + i * 0.065);
+        osc.stop(now + i * 0.065 + 0.29);
       });
     },
 
-    // 4. Peng (碰) - Resonant punchy chime
+    // 4. Peng (碰) - Resonant punchy chime (清脆铜钟碰牌音)
     playPeng: function() {
       if (isMuted) return;
       var ctx = getAudioContext();
       if (!ctx) return;
       var now = ctx.currentTime;
 
-      [587.33, 880].forEach(function(freq, i) {
+      [659.25, 987.77, 1318.51].forEach(function(freq, i) {
         var osc = ctx.createOscillator();
         var gain = ctx.createGain();
         osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, now + i * 0.06);
-        gain.gain.setValueAtTime(0.4, now + i * 0.06);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.06 + 0.35);
+        osc.frequency.setValueAtTime(freq, now + i * 0.05);
+        gain.gain.setValueAtTime(0.42, now + i * 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.05 + 0.38);
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start(now + i * 0.06);
-        osc.stop(now + i * 0.06 + 0.36);
+        osc.start(now + i * 0.05);
+        osc.stop(now + i * 0.05 + 0.39);
       });
     },
 
-    // 5. Gang (杠) - Deep dramatic gong
+    // 5. Gang (杠) - Deep dramatic bronze gong with golden shimmer
     playGang: function() {
       if (isMuted) return;
       var ctx = getAudioContext();
       if (!ctx) return;
       var now = ctx.currentTime;
 
+      // Deep gong fundamental
       var osc = ctx.createOscillator();
       var gain = ctx.createGain();
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(320, now);
-      osc.frequency.exponentialRampToValueAtTime(120, now + 0.5);
+      osc.frequency.setValueAtTime(360, now);
+      osc.frequency.exponentialRampToValueAtTime(95, now + 0.65);
 
-      // Lowpass filter for warm gong timbre
       var filter = ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(800, now);
-      filter.frequency.exponentialRampToValueAtTime(300, now + 0.5);
+      filter.frequency.setValueAtTime(950, now);
+      filter.frequency.exponentialRampToValueAtTime(260, now + 0.65);
 
-      gain.gain.setValueAtTime(0.5, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+      gain.gain.setValueAtTime(0.65, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
 
       osc.connect(filter);
       filter.connect(gain);
       gain.connect(ctx.destination);
 
       osc.start(now);
-      osc.stop(now + 0.56);
+      osc.stop(now + 0.72);
+
+      // Shimmering bronze overtone
+      var osc2 = ctx.createOscillator();
+      var gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1440, now);
+      osc2.frequency.exponentialRampToValueAtTime(480, now + 0.4);
+      gain2.gain.setValueAtTime(0.3, now);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now);
+      osc2.stop(now + 0.42);
     },
 
-    // 6. Hu (胡) - Celebratory major fanfare
+    // 6. Hu (胡) - Celebratory Chinese pentatonic victory fanfare
     playHu: function() {
       if (isMuted) return;
       var ctx = getAudioContext();
       if (!ctx) return;
       var now = ctx.currentTime;
 
-      var notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+      var notes = [523.25, 659.25, 783.99, 1046.50, 1318.51]; // C5, E5, G5, C6, E6
       notes.forEach(function(freq, idx) {
-        var t = now + idx * 0.1;
+        var t = now + idx * 0.085;
         var osc = ctx.createOscillator();
         var gain = ctx.createGain();
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(freq, t);
-        gain.gain.setValueAtTime(0.4, t);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+        gain.gain.setValueAtTime(0.45, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
 
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(t);
-        osc.stop(t + 0.46);
+        osc.stop(t + 0.56);
       });
     },
 
-    // 7. Zimo (自摸) - Extra grand fanfare with shimmer
+    // 7. Zimo (自摸) - Grand celebratory jackpot cascade fanfare with shimmer & bells
     playZimo: function() {
       if (isMuted) return;
       this.playHu();
@@ -449,20 +475,33 @@
       if (!ctx) return;
       var now = ctx.currentTime;
 
-      // High shimmering harmonics
-      [1318.51, 1567.98, 2093.00].forEach(function(freq, i) {
-        var t = now + 0.35 + i * 0.08;
+      // Sparkling ascending cascade
+      [659.25, 783.99, 987.77, 1046.50, 1318.51, 1567.98, 2093.00].forEach(function(freq, i) {
+        var t = now + 0.28 + i * 0.06;
         var osc = ctx.createOscillator();
         var gain = ctx.createGain();
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, t);
-        gain.gain.setValueAtTime(0.3, t);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+        gain.gain.setValueAtTime(0.32, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(t);
-        osc.stop(t + 0.61);
+        osc.stop(t + 0.51);
       });
+
+      // Warm celebration bass gong hit
+      var bOsc = ctx.createOscillator();
+      var bGain = ctx.createGain();
+      bOsc.type = 'triangle';
+      bOsc.frequency.setValueAtTime(220, now + 0.25);
+      bOsc.frequency.exponentialRampToValueAtTime(60, now + 0.85);
+      bGain.gain.setValueAtTime(0.5, now + 0.25);
+      bGain.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
+      bOsc.connect(bGain);
+      bGain.connect(ctx.destination);
+      bOsc.start(now + 0.25);
+      bOsc.stop(now + 0.86);
     },
 
     // 8. Countdown warning tick (for ≤ 5 seconds)
@@ -504,7 +543,7 @@
       osc.stop(now + 0.04);
     },
 
-    // 10. Voice Speech Synthesis (真人语音报牌、碰杠胡、快捷短句)
+    // 10. Voice Speech Synthesis (真人语音报牌、碰杠胡、快捷短句，赋予生动起伏语调与个性)
     speak: function(text, seat, customOpts) {
       if (isMuted || isVoiceMuted) return;
       if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
@@ -522,12 +561,12 @@
         u.lang = (chineseVoice && chineseVoice.lang) ? chineseVoice.lang : 'zh-CN';
         if (chineseVoice) u.voice = chineseVoice;
 
-        // Distinct pitch and pacing based on seat to differentiate players at the table
+        // Distinct emotional pitch and pacing based on seat to differentiate players with mahjong personality
         var SEAT_VOICES = [
-          { pitch: 1.05, rate: 1.15 }, // Seat 0 (自己: 自然清脆)
-          { pitch: 0.88, rate: 1.12 }, // Seat 1 (雀神阿强: 沉稳男声)
-          { pitch: 1.25, rate: 1.18 }, // Seat 2 (干王小美: 甜美女声)
-          { pitch: 0.98, rate: 1.14 }  // Seat 3 (德帅老十: 儒雅男声)
+          { pitch: 1.20, rate: 1.25 }, // Seat 0 (自己: 清脆高亢、元气爽朗)
+          { pitch: 0.94, rate: 1.22 }, // Seat 1 (雀神阿强: 豪爽浑厚、霸气十足)
+          { pitch: 1.45, rate: 1.28 }, // Seat 2 (千王小美: 甜美娇俏、语调起伏带感)
+          { pitch: 0.88, rate: 1.15 }  // Seat 3 (稳健老王: 沉稳从容、老道有力)
         ];
 
         var sIdx = (seat !== undefined && seat !== null ? seat : 0) % 4;
@@ -543,7 +582,7 @@
       }
     },
 
-    // 语音报牌（例如打二条 -> "二条" / "2条"）
+    // 语音报牌（有调有感情的麻将桌报牌声调）
     speakTile: function(tile, seat) {
       var TILE_SPOKEN_NAMES = [
         // 0-8: 万子
@@ -560,31 +599,40 @@
         '春', '夏', '秋', '冬', '梅', '兰', '竹', '菊'
       ];
       if (tile >= 0 && tile < TILE_SPOKEN_NAMES.length) {
-        this.speak(TILE_SPOKEN_NAMES[tile], seat, { rate: 1.16 });
+        var sIdx = (seat !== undefined && seat !== null ? seat : 0) % 4;
+        this.speak(TILE_SPOKEN_NAMES[tile], sIdx, { rate: 1.24 });
       }
     },
 
-    // 动作报语音（碰！杠！吃！胡牌！自摸！花杠！）
+    // 动作报语音（碰！杠！吃！胡牌！自摸！花杠！—— 生动有调的语音与语调）
     speakAction: function(action, seat) {
+      var sIdx = (seat !== undefined && seat !== null ? seat : 0) % 4;
+      var actKey = (action || '').toLowerCase().replace('！', '').trim();
+      if (actKey === 'pon' || actKey === '碰') actKey = 'peng';
+      if (actKey === 'kong' || actKey === '明杠' || actKey === '暗杠') actKey = 'gang';
+      if (actKey === 'hu' || actKey === '胡') actKey = 'hu';
+      if (actKey === 'tsumo' || actKey === '自摸') actKey = 'zimo';
+
       var map = {
-        'peng': '碰！', '碰': '碰！',
-        'gang': '杠！', '杠': '杠！', '明杠': '杠！', '暗杠': '杠！',
-        'chi': '吃！', '吃': '吃！',
-        'hu': '胡牌！', '胡': '胡牌！', '胡牌': '胡牌！',
-        'zimo': '自摸！', '自摸': '自摸！',
-        'flower': '花杠！', '花杠': '花杠！'
+        'peng': '碰！',
+        'gang': '杠！',
+        'chi': '吃！',
+        'hu': '胡牌！',
+        'zimo': '自摸！',
+        'flower': '花杠！'
       };
-      var text = map[action] || (action + '！');
-      this.speak(text, seat, { rate: 1.25, volume: 1.0 });
+      var text = map[actKey] || (action + '！');
+      this.speak(text, sIdx, { volume: 1.0 });
     },
 
-    // 快捷短句语音播报
+    // 快捷短句语音播报（富有生动语调）
     speakPhrase: function(phrase, seat) {
       if (!phrase) return;
       // 过滤表情符号以获取纯净清晰的文字发音
       var cleanText = phrase.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '').trim();
       if (cleanText) {
-        this.speak(cleanText, seat, { rate: 1.12, volume: 1.0, cancelPrevious: true });
+        var sIdx = (seat !== undefined && seat !== null ? seat : 0) % 4;
+        this.speak(cleanText, sIdx, { rate: 1.18, volume: 1.0, cancelPrevious: true });
       }
     },
 
