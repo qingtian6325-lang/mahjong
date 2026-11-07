@@ -779,23 +779,10 @@
     if (p.isBot) {
       return new Promise(function(resolve) {
         setTimeout(function() {
-          // 机器人选择逻辑同样严格遵循：胡 > 杠 > 碰 > 吃 > 过
-          if (options.canHu) {
-            resolve({ act: 'hu' });
-          } else if (options.canGang && Math.random() < 0.85) {
-            resolve({ act: 'gang' });
-          } else if (options.canPeng && Math.random() < 0.65) {
-            resolve({ act: 'peng' });
-          } else if (options.canChi && Math.random() < 0.5) {
-            var chiOpts = Engine.findChiOptions(p.hand, options.tile);
-            if (chiOpts.length > 0) {
-              resolve({ act: 'chi', meld: chiOpts[0] });
-            } else {
-              resolve({ act: 'pass', couldHu: options.canHu });
-            }
-          } else {
-            resolve({ act: 'pass', couldHu: options.canHu });
-          }
+          // 强力雀神 AI 决策：基于向听度、听牌宽度、面子拆解与场面可见张数智能决定 胡 > 杠 > 碰 > 吃 > 过
+          var ctx = buildAIContext(seat);
+          var decision = Engine.aiDecideClaim ? Engine.aiDecideClaim(p, options, ctx) : { act: 'pass', couldHu: options.canHu };
+          resolve(decision);
         }, 500);
       });
     }
@@ -1248,11 +1235,21 @@
     if (Engine.canWinHand(p.hand, p.melds.length)) {
       return { type: 'tsumo' };
     }
+    var seatIdx = S ? S.players.indexOf(p) : -1;
+    var ctx = buildAIContext(seatIdx >= 0 ? seatIdx : 0);
+    ctx.forbiddenDiscard = p.forbiddenDiscard;
+
     var kongs = Engine.findKongs(p);
     if (kongs.length && S.wall.length > 0) {
-      return { type: 'kong', kong: kongs[0] };
+      // 暗杠/补杠前检查：若当前摸牌后已能进高宽听牌，优先不破坏顺子结构；若杠牌不破坏听口则果断杠牌拿分
+      var tingBefore = Engine.analyzeTing(p.hand, p.melds.length, ctx.visibleCounts);
+      var hasGoodTing = Object.keys(tingBefore).length > 0;
+      var k0 = kongs[0];
+      if (!hasGoodTing || k0.kind === 'added' || k0.tile >= 27) {
+        return { type: 'kong', kong: k0 };
+      }
     }
-    var chosen = Engine.aiChooseDiscard(p);
+    var chosen = Engine.aiChooseDiscard(p, ctx);
     // 机器人也严格遵守吃牌禁打同张规则
     if (p.forbiddenDiscard !== null && p.forbiddenDiscard !== undefined && chosen === p.forbiddenDiscard) {
       var altTiles = p.hand.filter(function(x) { return x !== p.forbiddenDiscard; });
@@ -1381,36 +1378,64 @@
   function onTimerExpire(seat) {
     if (S && S.pendingDiscardResolve) {
       var pl = S.players[seat];
-      var discardTile = Engine.aiChooseDiscard(pl);
+      var ctx = buildAIContext(seat);
+      ctx.forbiddenDiscard = pl.forbiddenDiscard;
+      var discardTile = Engine.aiChooseDiscard(pl, ctx);
       S.pendingDiscardResolve(discardTile);
     }
   }
 
-  /* ================= Ting Assistant (听牌推荐) ================= */
+  /* ================= Ting Assistant (听牌推荐) & AI Public Table Context ================= */
   function updateTingAssistant(player) {
-    var visibleCounts = getVisibleTileCounts();
+    var visibleCounts = getVisibleTileCounts(ME);
     S.tingMap = Engine.analyzeTing(player.hand, player.melds.length, visibleCounts);
     renderHandTingBadges();
   }
 
-  function getVisibleTileCounts() {
+  function getVisibleTileCounts(observerSeat) {
     var counts = {};
     if (!S) return counts;
+    var targetSeat = (observerSeat !== undefined && observerSeat !== null) ? observerSeat : ME;
     for (var i = 0; i < 4; i++) {
       var pl = S.players[i];
       if (!pl) continue;
       pl.discards.forEach(function(d) {
+        if (typeof d === 'object' && d !== null && d.claimed) return; // 已被吃碰杠的弃牌已在副露中统计，避免重复计入
         var t = (typeof d === 'object' && d !== null) ? d.tile : d;
         counts[t] = (counts[t] || 0) + 1;
       });
       pl.melds.forEach(function(m) {
         m.tiles.forEach(function(t) { counts[t] = (counts[t] || 0) + 1; });
       });
-      if (i === ME) {
+      if (i === targetSeat) {
         pl.hand.forEach(function(t) { counts[t] = (counts[t] || 0) + 1; });
       }
     }
     return counts;
+  }
+
+  function buildAIContext(seat) {
+    if (!S) return {};
+    var discardedSet = {};
+    var maxOppMelds = 0;
+    for (var i = 0; i < 4; i++) {
+      var pl = S.players[i];
+      if (!pl) continue;
+      pl.discards.forEach(function(d) {
+        var t = (typeof d === 'object' && d !== null) ? d.tile : d;
+        discardedSet[t] = (discardedSet[t] || 0) + 1;
+      });
+      if (i !== seat && pl.melds && pl.melds.length > maxOppMelds) {
+        maxOppMelds = pl.melds.length;
+      }
+    }
+    return {
+      visibleCounts: getVisibleTileCounts(seat),
+      discardedSet: discardedSet,
+      wallRemaining: S.wall ? S.wall.length : 70,
+      maxOpponentMelds: maxOppMelds,
+      forbiddenDiscard: S.players[seat] ? S.players[seat].forbiddenDiscard : null
+    };
   }
 
   function renderHandTingBadges() {

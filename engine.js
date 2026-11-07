@@ -589,53 +589,381 @@
     return res;
   }
 
-  /* ================= AI Heuristics ================= */
-  function handValue(c, w, meldCount) {
-    var v = w * 5 + meldCount * 9;
-    for (var t = 0; t < 34; t++) {
-      var n = c[t];
-      if (!n) continue;
-      if (n >= 2) v += 4 + (n - 2) * 5;
-      if (t < 27) {
-        var r = t % 9;
-        if (r <= 7 && c[t + 1]) v += 2;
-        if (r <= 6 && c[t + 2]) v += 2;
+  /* ================= Master AI Heuristics (强力雀神AI：向听拆搭、有效进张、听牌最大化与防守算牌) ================= */
+  function liveLeftOf(tile, c, visibleCounts) {
+    var seen = (visibleCounts && visibleCounts[tile]) ? visibleCounts[tile] : (c ? (c[tile] || 0) : 0);
+    return Math.max(0, 4 - seen);
+  }
+
+  // Optimal recursive decomposition for a single 9-tile suit (万/条/筒)
+  function evalSuitRecursive(s, idx, baseTile, fullCounts, visibleCounts) {
+    while (idx < 9 && s[idx] === 0) idx++;
+    if (idx >= 9) return 0;
+
+    var best = -1e9;
+    var n = s[idx];
+    var absTile = baseTile + idx;
+
+    // 1. Complete Triplet (刻子 AAA)
+    if (n >= 3) {
+      s[idx] -= 3;
+      var vTrip = 125 + evalSuitRecursive(s, idx, baseTile, fullCounts, visibleCounts);
+      if (vTrip > best) best = vTrip;
+      s[idx] += 3;
+    }
+
+    // 2. Complete Sequence (顺子 ABC)
+    if (idx <= 6 && s[idx + 1] > 0 && s[idx + 2] > 0) {
+      s[idx]--; s[idx + 1]--; s[idx + 2]--;
+      var vSeq = 122 + evalSuitRecursive(s, idx, baseTile, fullCounts, visibleCounts);
+      if (vSeq > best) best = vSeq;
+      s[idx]++; s[idx + 1]++; s[idx + 2]++;
+    }
+
+    // 3. Pair / Kouzi (对子 AA)
+    if (n >= 2) {
+      var livePon = liveLeftOf(absTile, fullCounts, visibleCounts);
+      s[idx] -= 2;
+      var vPair = 42 + livePon * 4.0 + evalSuitRecursive(s, idx, baseTile, fullCounts, visibleCounts);
+      if (vPair > best) best = vPair;
+      s[idx] += 2;
+    }
+
+    // 4. Two-tile adjacent protomeld (两面搭子 AB / 边张 12, 89)
+    if (idx <= 7 && s[idx + 1] > 0) {
+      var liveAdj = 0;
+      var baseAdj = 12;
+      if (idx >= 1 && idx <= 6) {
+        // Ryanmen (两面搭子, waits on idx-1 and idx+2)
+        liveAdj = liveLeftOf(absTile - 1, fullCounts, visibleCounts) + liveLeftOf(absTile + 2, fullCounts, visibleCounts);
+        baseAdj = 28;
+      } else if (idx === 0) {
+        // Penchan 1-2 waiting on 3
+        liveAdj = liveLeftOf(absTile + 2, fullCounts, visibleCounts);
+      } else {
+        // Penchan 8-9 waiting on 7
+        liveAdj = liveLeftOf(absTile - 1, fullCounts, visibleCounts);
+      }
+      var protVal = (liveAdj > 0) ? (baseAdj + liveAdj * 3.2) : 2;
+      s[idx]--; s[idx + 1]--;
+      var vAdj = protVal + evalSuitRecursive(s, idx, baseTile, fullCounts, visibleCounts);
+      if (vAdj > best) best = vAdj;
+      s[idx]++; s[idx + 1]++;
+    }
+
+    // 5. Two-tile gap protomeld (嵌张搭子 AC, waiting on idx+1)
+    if (idx <= 6 && s[idx + 2] > 0) {
+      var liveGap = liveLeftOf(absTile + 1, fullCounts, visibleCounts);
+      var gapVal = (liveGap > 0) ? (15 + liveGap * 2.8) : 2;
+      s[idx]--; s[idx + 2]--;
+      var vGap = gapVal + evalSuitRecursive(s, idx, baseTile, fullCounts, visibleCounts);
+      if (vGap > best) best = vGap;
+      s[idx]++; s[idx + 2]++;
+    }
+
+    // 6. Treat 1 copy at idx as an isolated floating tile (孤张)
+    var centerBonus = (idx >= 2 && idx <= 6) ? 4.5 : ((idx === 1 || idx === 7) ? 2.5 : 0.8);
+    var liveSelf = liveLeftOf(absTile, fullCounts, visibleCounts);
+    s[idx]--;
+    var vIso = centerBonus + liveSelf * 0.4 + evalSuitRecursive(s, idx, baseTile, fullCounts, visibleCounts);
+    if (vIso > best) best = vIso;
+    s[idx]++;
+
+    return best;
+  }
+
+  function handValue(c, w, meldCount, visibleCounts) {
+    var v = (w || 0) * 118 + (meldCount || 0) * 125;
+
+    // Evaluate each of the 3 suits via exact decomposition
+    for (var suit = 0; suit < 3; suit++) {
+      var base = suit * 9;
+      var sArr = [
+        c[base], c[base + 1], c[base + 2],
+        c[base + 3], c[base + 4], c[base + 5],
+        c[base + 6], c[base + 7], c[base + 8]
+      ];
+      v += evalSuitRecursive(sArr, 0, base, c, visibleCounts);
+    }
+
+    // Evaluate Honor tiles (27..33: 东南西北中发白)
+    for (var h = 27; h < 34; h++) {
+      var nh = c[h];
+      if (!nh) continue;
+      var liveH = liveLeftOf(h, c, visibleCounts);
+      if (nh >= 3) {
+        v += 126 + (nh - 3) * 15;
+      } else if (nh === 2) {
+        // Live honor pair can easily be pon'd from any of 3 opponents!
+        v += (liveH > 0) ? (48 + liveH * 7.5) : 28;
+      } else {
+        // Single honor tile: if 2+ copies already visible on table, it is a dead honor
+        if (liveH === 0) v -= 14;
+        else if (liveH === 1) v -= 8;
+        else if (liveH === 2) v += 0.5;
+        else v += 2.2;
       }
     }
+
+    // Seven Pairs (七对) potential bonus when closed hand (meldCount === 0)
+    if (!meldCount) {
+      var pairCount = 0;
+      for (var t = 0; t < 34; t++) {
+        if (c[t] >= 2) pairCount += Math.floor(c[t] / 2);
+      }
+      if (pairCount + (w || 0) >= 4) {
+        v += (pairCount + (w || 0)) * 22;
+      }
+    }
+
     return v;
   }
 
-  function aiChooseDiscard(player) {
-    var o = countsOf(player.hand);
+  function buildEffectiveVisible(c, ctx) {
+    var vis = {};
+    var baseVis = (ctx && ctx.visibleCounts) ? ctx.visibleCounts : null;
+    for (var t = 0; t <= 34; t++) {
+      if (baseVis && baseVis[t] !== undefined) {
+        vis[t] = baseVis[t];
+      } else {
+        vis[t] = (t < 34 && c) ? (c[t] || 0) : 0;
+      }
+    }
+    return vis;
+  }
+
+  function tileSafetyAdjustment(tile, c, ctx) {
+    var vis = (ctx && ctx.visibleCounts) ? ctx.visibleCounts : {};
+    var discardedSet = (ctx && ctx.discardedSet) ? ctx.discardedSet : {};
+    var wallRem = (ctx && ctx.wallRemaining !== undefined) ? ctx.wallRemaining : 70;
+    var maxOppMelds = (ctx && ctx.maxOpponentMelds) ? ctx.maxOpponentMelds : 0;
+    var isLateOrDanger = (wallRem < 48 || maxOppMelds >= 2);
+
+    var seen = vis[tile] || (c ? c[tile] : 0) || 0;
+    var adj = 0;
+
+    if (tile >= 27 && tile < 34) {
+      // Honor tiles: discarding dead/mostly-seen honors is both efficient and safe
+      if (seen >= 3) adj += 22;
+      else if (seen === 2) adj += 14;
+      else if (seen === 1) adj += 5;
+      if (discardedSet[tile]) adj += 5;
+    } else if (tile < 27) {
+      var r = tile % 9;
+      if (r === 0 || r === 8) {
+        adj += 4; // Terminals 1 & 9 are safer against sequences
+      } else if (r === 1 || r === 7) {
+        adj += 1.5;
+      } else if (isLateOrDanger) {
+        // Middle tiles 3..7 are dangerous in late game if never discarded
+        if (discardedSet[tile]) adj += 6;
+        else adj -= 7;
+      }
+    }
+    return adj;
+  }
+
+  function evaluate13TileHand(c13, w, meldCount, vis) {
+    var baseVal = handValue(c13, w, meldCount, vis);
+    // 1-step Ukeire (有效进张数): count how many live draws significantly improve the hand
+    var ukeireBonus = 0;
+    for (var d = 0; d < 34; d++) {
+      var rem = Math.max(0, 4 - (vis[d] || 0));
+      if (rem <= 0) continue;
+
+      // Fast neighborhood filter so we only evaluate relevant draws
+      var relevant = c13[d] > 0;
+      if (!relevant && d < 27) {
+        var r = d % 9;
+        if ((r > 0 && c13[d - 1] > 0) || (r < 8 && c13[d + 1] > 0) ||
+            (r > 1 && c13[d - 2] > 0) || (r < 7 && c13[d + 2] > 0)) {
+          relevant = true;
+        }
+      }
+      if (!relevant) continue;
+
+      c13[d]++;
+      var nextVal = handValue(c13, w, meldCount, vis);
+      c13[d]--;
+
+      var gain = nextVal - baseVal;
+      if (gain >= 22) {
+        ukeireBonus += rem * (gain * 0.28);
+      }
+    }
+    return baseVal + ukeireBonus;
+  }
+
+  function aiChooseDiscard(player, ctx) {
+    var hand = player.hand || [];
+    var meldCount = (player.melds && player.melds.length) ? player.melds.length : 0;
+    var forbidden = (ctx && ctx.forbiddenDiscard !== undefined && ctx.forbiddenDiscard !== null)
+      ? ctx.forbiddenDiscard
+      : player.forbiddenDiscard;
+
+    var o = countsOf(hand);
+    var vis = buildEffectiveVisible(o.c, ctx);
+
+    // Priority 1: Check if any legal discard puts the bot into Ting (听牌)!
+    // If multiple discards reach Ting, pick the one with the most remaining winning tiles (最宽听口)!
+    var tingMap = analyzeTing(hand, meldCount, vis);
+    var bestTingTile = null;
+    var bestTingScore = -1e9;
+    var tingKeys = Object.keys(tingMap);
+    for (var k = 0; k < tingKeys.length; k++) {
+      if (tingKeys[k] === 'current') continue;
+      var dTile = parseInt(tingKeys[k], 10);
+      if (isNaN(dTile) || dTile === WILD || dTile === forbidden) continue;
+      var waits = tingMap[dTile] || [];
+      var totalRem = 0;
+      for (var wIdx = 0; wIdx < waits.length; wIdx++) {
+        totalRem += waits[wIdx].remaining;
+      }
+      var tingScore = totalRem * 120 + waits.length * 20 + tileSafetyAdjustment(dTile, o.c, ctx);
+      if (tingScore > bestTingScore) {
+        bestTingScore = tingScore;
+        bestTingTile = dTile;
+      }
+    }
+    if (bestTingTile !== null && bestTingScore > 0) {
+      return bestTingTile;
+    }
+
+    // Priority 2: Maximize 13-tile structure + 1-step Ukeire (有效进张) + Tactical Safety
     var best = null, bestScore = -1e9;
     var seen = {};
 
-    for (var i = 0; i < player.hand.length; i++) {
-      var t = player.hand[i];
-      if (t === WILD || seen[t]) continue;
+    for (var i = 0; i < hand.length; i++) {
+      var t = hand[i];
+      if (t === WILD || t === forbidden || seen[t]) continue;
       seen[t] = 1;
 
       var c = o.c.slice();
       c[t]--;
-      var v = handValue(c, o.w, player.melds.length);
+      var evalScore = evaluate13TileHand(c, o.w, meldCount, vis);
+      var safety = tileSafetyAdjustment(t, o.c, ctx);
+      var totalScore = evalScore + safety;
 
-      var conn = 0;
-      if (o.c[t] > 1) conn += 3;
-      if (t < 27) {
-        var r = t % 9;
-        if (r > 0 && o.c[t - 1]) conn += 2;
-        if (r < 8 && o.c[t + 1]) conn += 2;
-        if (r > 1 && o.c[t - 2]) conn += 1;
-        if (r < 7 && o.c[t + 2]) conn += 1;
-      }
-      var score = v * 10 - conn + (t >= 27 ? 0.5 : 0) + Math.random() * 0.4;
-      if (score > bestScore) {
-        bestScore = score;
+      if (totalScore > bestScore) {
+        bestScore = totalScore;
         best = t;
       }
     }
-    if (best === null) best = player.hand[player.hand.length - 1];
+
+    if (best === null) {
+      var fallback = hand.filter(function(x) { return x !== forbidden && x !== WILD; });
+      best = fallback.length > 0 ? fallback[fallback.length - 1] : hand[hand.length - 1];
+    }
     return best;
+  }
+
+  // Smart AI decision for Claims (胡 > 杠 > 碰 > 吃 > 过)
+  function aiDecideClaim(player, options, ctx) {
+    if (!options) return { act: 'pass' };
+    if (options.canHu) {
+      return { act: 'hu' };
+    }
+
+    var hand = player.hand ? player.hand.slice() : [];
+    var meldCount = (player.melds && player.melds.length) ? player.melds.length : 0;
+    var o = countsOf(hand);
+    var vis = buildEffectiveVisible(o.c, ctx);
+
+    // Check current 13-tile hand Ting status & baseline score
+    var curTing = analyzeTing(hand, meldCount, vis);
+    var curWaits = curTing['current'] || [];
+    var curTingRem = 0;
+    for (var cw = 0; cw < curWaits.length; cw++) curTingRem += curWaits[cw].remaining;
+    var curScore = evaluate13TileHand(o.c.slice(), o.w, meldCount, vis);
+
+    // 1. Evaluate Gang (明杠): immediate +6 points bonus + replacement draw
+    if (options.canGang) {
+      // Only skip Ming Kong if already in a wide Ting (>= 4 live winning tiles) that would be broken
+      if (curTingRem < 4) {
+        return { act: 'gang' };
+      }
+    }
+
+    // Helper to simulate claiming (removing removeTiles from hand, incrementing meldCount, and discarding best tile)
+    function simulateClaimAfter(removeTiles, forbiddenTile) {
+      var simHand = hand.slice();
+      for (var r = 0; r < removeTiles.length; r++) {
+        var idx = simHand.indexOf(removeTiles[r]);
+        if (idx >= 0) simHand.splice(idx, 1);
+      }
+      var newMeldCount = meldCount + 1;
+      var simPlayer = { hand: simHand, melds: new Array(newMeldCount), forbiddenDiscard: forbiddenTile };
+      var simCtx = {};
+      if (ctx) {
+        for (var key in ctx) simCtx[key] = ctx[key];
+      }
+      simCtx.forbiddenDiscard = forbiddenTile;
+
+      var bestDiscard = aiChooseDiscard(simPlayer, simCtx);
+      var dIdx = simHand.indexOf(bestDiscard);
+      if (dIdx >= 0) simHand.splice(dIdx, 1);
+
+      var simO = countsOf(simHand);
+      var simTing = analyzeTing(simHand, newMeldCount, vis);
+      var simWaits = simTing['current'] || [];
+      var simTingRem = 0;
+      for (var sw = 0; sw < simWaits.length; sw++) simTingRem += simWaits[sw].remaining;
+      var simScore = evaluate13TileHand(simO.c, simO.w, newMeldCount, vis);
+      return {
+        tingRem: simTingRem,
+        score: simScore,
+        discard: bestDiscard
+      };
+    }
+
+    // 2. Evaluate Peng (碰)
+    if (options.canPeng) {
+      var pengRes = simulateClaimAfter([options.tile, options.tile], null);
+      if (curTingRem > 0) {
+        // Already in Ting: only Peng if it widens our Ting wait
+        if (pengRes.tingRem > curTingRem) {
+          return { act: 'peng' };
+        }
+      } else {
+        // Not in Ting: Peng if it puts us into Ting OR improves hand value significantly
+        if (pengRes.tingRem > 0 || pengRes.score >= curScore + 12) {
+          return { act: 'peng' };
+        }
+      }
+    }
+
+    // 3. Evaluate Chi (吃) — test ALL legal Chi combinations and pick the strongest one
+    if (options.canChi) {
+      var chiOpts = findChiOptions(hand, options.tile);
+      var bestChiMeld = null;
+      var bestChiRes = null;
+      for (var m = 0; m < chiOpts.length; m++) {
+        var meld = chiOpts[m];
+        var toRem = meld.slice();
+        var ti = toRem.indexOf(options.tile);
+        if (ti >= 0) toRem.splice(ti, 1);
+        var res = simulateClaimAfter(toRem, options.tile);
+        var metric = res.tingRem * 150 + res.score;
+        var bestMetric = bestChiRes ? (bestChiRes.tingRem * 150 + bestChiRes.score) : -1e9;
+        if (metric > bestMetric) {
+          bestChiRes = res;
+          bestChiMeld = meld;
+        }
+      }
+      if (bestChiMeld && bestChiRes) {
+        if (curTingRem > 0) {
+          if (bestChiRes.tingRem > curTingRem + 1) {
+            return { act: 'chi', meld: bestChiMeld };
+          }
+        } else {
+          if (bestChiRes.tingRem > 0 || bestChiRes.score >= curScore + 15) {
+            return { act: 'chi', meld: bestChiMeld };
+          }
+        }
+      }
+    }
+
+    return { act: 'pass', couldHu: options.canHu };
   }
 
   window.MahjongEngine = {
@@ -660,6 +988,7 @@
     analyzeTing: analyzeTing,
     findChiOptions: findChiOptions,
     findKongs: findKongs,
-    aiChooseDiscard: aiChooseDiscard
+    aiChooseDiscard: aiChooseDiscard,
+    aiDecideClaim: aiDecideClaim
   };
 })();
