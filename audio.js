@@ -10,6 +10,21 @@
   var isVoiceMuted = false;
   var chineseVoice = null;
 
+  function scoreVoiceQuality(v) {
+    var name = (v.name || '').toLowerCase();
+    var lang = (v.lang || '').toLowerCase();
+    var score = 0;
+    if (lang.indexOf('cn') !== -1 || lang.indexOf('hans') !== -1 || lang === 'zh-cn' || lang === 'zh_cn') score += 30;
+    else if (lang.indexOf('tw') !== -1 || lang.indexOf('hk') !== -1) score += 15;
+    if (name.indexOf('natural') !== -1 || name.indexOf('neural') !== -1 || name.indexOf('online') !== -1) score += 100;
+    if (name.indexOf('xiaoxiao') !== -1 || name.indexOf('晓晓') !== -1 || name.indexOf('yunxi') !== -1 || name.indexOf('云希') !== -1 || name.indexOf('xiaoyi') !== -1) score += 90;
+    if (name.indexOf('premium') !== -1 || name.indexOf('enhanced') !== -1 || name.indexOf('siri') !== -1) score += 80;
+    if (name.indexOf('ting-ting') !== -1 || name.indexOf('tingting') !== -1 || name.indexOf('婷婷') !== -1 || name.indexOf('meijia') !== -1 || name.indexOf('美佳') !== -1) score += 65;
+    if (name.indexOf('google') !== -1) score += 55;
+    if (v.localService === false) score += 20;
+    return score;
+  }
+
   function updateChineseVoice() {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     try {
@@ -19,11 +34,10 @@
         return v.lang && (v.lang.toLowerCase().indexOf('zh') === 0 || v.lang.toLowerCase().indexOf('cmn') === 0);
       });
       if (zhVoices.length > 0) {
-        var cnVoice = zhVoices.find(function(v) {
-          var l = v.lang.toLowerCase();
-          return l.indexOf('cn') !== -1 || l.indexOf('hans') !== -1 || l === 'zh_cn' || l === 'zh-cn';
+        zhVoices.sort(function(a, b) {
+          return scoreVoiceQuality(b) - scoreVoiceQuality(a);
         });
-        chineseVoice = cnVoice || zhVoices[0];
+        chineseVoice = zhVoices[0];
       }
     } catch (e) {}
   }
@@ -561,12 +575,12 @@
         u.lang = (chineseVoice && chineseVoice.lang) ? chineseVoice.lang : 'zh-CN';
         if (chineseVoice) u.voice = chineseVoice;
 
-        // Distinct emotional pitch and pacing based on seat to differentiate players with mahjong personality
+        // Natural, pleasant pitch and pacing per seat (avoiding extreme pitch-shift formant distortion)
         var SEAT_VOICES = [
-          { pitch: 1.20, rate: 1.25 }, // Seat 0 (自己: 清脆高亢、元气爽朗)
-          { pitch: 0.94, rate: 1.22 }, // Seat 1 (雀神阿强: 豪爽浑厚、霸气十足)
-          { pitch: 1.45, rate: 1.28 }, // Seat 2 (千王小美: 甜美娇俏、语调起伏带感)
-          { pitch: 0.88, rate: 1.15 }  // Seat 3 (稳健老王: 沉稳从容、老道有力)
+          { pitch: 1.04, rate: 1.12 }, // Seat 0 (自己: 自然清亮、吐字清晰)
+          { pitch: 0.95, rate: 1.08 }, // Seat 1 (雀神阿强: 沉稳豪爽)
+          { pitch: 1.10, rate: 1.10 }, // Seat 2 (千王小美: 柔和轻快)
+          { pitch: 0.92, rate: 1.05 }  // Seat 3 (稳健老王: 醇厚从容)
         ];
 
         var sIdx = (seat !== undefined && seat !== null ? seat : 0) % 4;
@@ -600,7 +614,7 @@
       ];
       if (tile >= 0 && tile < TILE_SPOKEN_NAMES.length) {
         var sIdx = (seat !== undefined && seat !== null ? seat : 0) % 4;
-        this.speak(TILE_SPOKEN_NAMES[tile], sIdx, { rate: 1.24 });
+        this.speak(TILE_SPOKEN_NAMES[tile], sIdx, { rate: 1.15 });
       }
     },
 
@@ -625,14 +639,47 @@
       this.speak(text, sIdx, { volume: 1.0 });
     },
 
-    // 快捷短句语音播报（富有生动语调）
+    // 快捷短句语音播报（自然柔和真人语调 + 悦耳气泡和弦伴音，过滤波浪号等特殊字符）
     speakPhrase: function(phrase, seat) {
       if (!phrase) return;
-      // 过滤表情符号以获取纯净清晰的文字发音
-      var cleanText = phrase.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '').trim();
+      // 播放轻柔悦耳的双音木琴/古筝气泡前奏，让短句听感更温润饱满
+      if (!isMuted) {
+        try {
+          var ctx = getAudioContext();
+          if (ctx) {
+            var now = ctx.currentTime;
+            [523.25, 659.25].forEach(function(freq, idx) {
+              var osc = ctx.createOscillator();
+              var gain = ctx.createGain();
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(freq, now + idx * 0.055);
+              gain.gain.setValueAtTime(0.001, now + idx * 0.055);
+              gain.gain.linearRampToValueAtTime(0.08, now + idx * 0.055 + 0.015);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.055 + 0.24);
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.start(now + idx * 0.055);
+              osc.stop(now + idx * 0.055 + 0.25);
+            });
+          }
+        } catch (e) {}
+      }
+      // 过滤表情符号及特殊波浪号（防止TTS读出“波浪号”）
+      var cleanText = phrase
+        .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '')
+        .replace(/[\u2600-\u27BF]/g, '')
+        .replace(/[～~]/g, '！')
+        .trim();
       if (cleanText) {
         var sIdx = (seat !== undefined && seat !== null ? seat : 0) % 4;
-        this.speak(cleanText, sIdx, { rate: 1.18, volume: 1.0, cancelPrevious: true });
+        var PHRASE_VOICES = [
+          { pitch: 1.01, rate: 1.02 }, // 自己: 最自然柔和的原声语调，无电音失真
+          { pitch: 0.96, rate: 1.00 }, // 阿强: 自然稳重
+          { pitch: 1.05, rate: 1.03 }, // 小美: 自然清甜
+          { pitch: 0.94, rate: 0.98 }  // 老王: 自然醇厚
+        ];
+        var pCfg = PHRASE_VOICES[sIdx];
+        this.speak(cleanText, sIdx, { pitch: pCfg.pitch, rate: pCfg.rate, volume: 0.95, cancelPrevious: true });
       }
     },
 

@@ -116,8 +116,52 @@ async function runTests() {
     }
   }
 
-  // TEST 3: Mobile Landscape (iPhone 13 Landscape: 844x390)
-  console.log('\n[TEST 3] Testing iPhone Landscape (844x390)...');
+  // Helper to assert all hand tiles in #humanHandRow are strictly inside the viewport bounds
+  async function assertAllHandTilesInViewport(label) {
+    const check = await page.evaluate(() => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const row = document.getElementById('humanHandRow');
+      const rowRect = row ? row.getBoundingClientRect() : null;
+      const tiles = Array.from(document.querySelectorAll('#humanHandRow .mj-tile'));
+      const outOfBounds = [];
+      tiles.forEach((t, idx) => {
+        const r = t.getBoundingClientRect();
+        if (r.width < 10 || r.height < 10 || r.left < -1 || r.top < -1 || r.right > vw + 1 || r.bottom > vh + 1) {
+          outOfBounds.push({
+            idx,
+            left: Math.round(r.left),
+            top: Math.round(r.top),
+            right: Math.round(r.right),
+            bottom: Math.round(r.bottom),
+            w: Math.round(r.width),
+            h: Math.round(r.height)
+          });
+        }
+      });
+      return {
+        vw,
+        vh,
+        tileCount: tiles.length,
+        rowRect: rowRect ? {
+          left: Math.round(rowRect.left),
+          top: Math.round(rowRect.top),
+          right: Math.round(rowRect.right),
+          bottom: Math.round(rowRect.bottom),
+          w: Math.round(rowRect.width),
+          h: Math.round(rowRect.height)
+        } : null,
+        outOfBounds
+      };
+    });
+    console.log(`- [${label}] Viewport=${check.vw}x${check.vh}, Tiles=${check.tileCount}, HandRowBounds=${JSON.stringify(check.rowRect)}, OutOfBounds=${check.outOfBounds.length}`);
+    if (check.tileCount < 13 || check.outOfBounds.length > 0) {
+      throw new Error(`[${label}] Hand tiles clipped or out of viewport! Details: ${JSON.stringify(check)}`);
+    }
+  }
+
+  // TEST 3: Mobile Landscape (iPhone 13 Landscape: 844x390 & Safari Toolbar Landscape: 844x320)
+  console.log('\n[TEST 3] Testing iPhone Landscape (844x390 & 844x320 with browser toolbar)...');
   await page.setViewportSize({ width: 844, height: 390 });
   await page.waitForTimeout(400);
 
@@ -129,11 +173,17 @@ async function runTests() {
     };
   });
   console.log(`- Overflow check: H-Overflow=${overflows.hasHOverflow}, V-Overflow=${overflows.hasVOverflow}`);
+  await assertAllHandTilesInViewport('Landscape 844x390');
   await page.screenshot({ path: 'test-iphone-landscape.png' });
   console.log('- iPhone Landscape screenshot saved: test-iphone-landscape.png');
 
-  // TEST 4: Mobile Portrait Auto-Rotation & Seamless Fullscreen View (390x844)
-  console.log('\n[TEST 4] Testing Mobile Portrait (390x844) Auto-Rotation & Hand Tiles Visibility...');
+  // Also test ultra-short landscape when mobile Safari/Chrome URL + bottom toolbar reduce height to 320px
+  await page.setViewportSize({ width: 844, height: 320 });
+  await page.waitForTimeout(300);
+  await assertAllHandTilesInViewport('Landscape+Toolbar 844x320');
+
+  // TEST 4: Mobile Portrait Auto-Rotation & Seamless Fullscreen View (390x844 & 360x740)
+  console.log('\n[TEST 4] Testing Mobile Portrait (390x844 & 360x740) Auto-Rotation & Hand Tiles Visibility...');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(400);
 
@@ -150,19 +200,34 @@ async function runTests() {
   });
   console.log(`- Rotated #app container bounds on portrait screen: ${JSON.stringify(appBounding)} (Expected: ~390x844)`);
 
-  // Verify hand tiles are fully visible and not clipped
-  const handTilesVisible = await page.$eval('#humanHandRow', el => {
-    const r = el.getBoundingClientRect();
-    return r.width > 0 && r.height > 0;
+  await assertAllHandTilesInViewport('Portrait Auto-Rotate 390x844');
+  await page.screenshot({ path: 'test-portrait-auto-rotated.png' });
+  console.log('- Mobile portrait auto-rotated screenshot saved: test-portrait-auto-rotated.png');
+
+  // Also test smaller Android portrait (360x740)
+  await page.setViewportSize({ width: 360, height: 740 });
+  await page.waitForTimeout(300);
+  await assertAllHandTilesInViewport('Android Portrait Auto-Rotate 360x740');
+
+  // Also test Force-Portrait mode (390x844 unrotated)
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(250);
+  await page.evaluate(() => {
+    document.body.classList.remove('orient-auto', 'orient-force-landscape');
+    document.body.classList.add('orient-force-portrait');
   });
-  console.log(`- Hand tiles fully visible and rendered on portrait mobile: ${handTilesVisible}`);
+  await page.waitForTimeout(300);
+  await assertAllHandTilesInViewport('Force-Portrait Unrotated 390x844');
+  await page.screenshot({ path: 'test-force-portrait.png' });
+  await page.evaluate(() => {
+    document.body.classList.remove('orient-force-portrait');
+    document.body.classList.add('orient-auto');
+  });
+  await page.waitForTimeout(200);
 
   // Test rotation button in toolbar
   const hasRotateBtn = (await page.$('#btnRotateToggle')) !== null;
   console.log(`- Toolbar orientation toggle button present: ${hasRotateBtn}`);
-
-  await page.screenshot({ path: 'test-portrait-auto-rotated.png' });
-  console.log('- Mobile portrait auto-rotated screenshot saved: test-portrait-auto-rotated.png');
 
   // Switch back to Desktop for Modal & Settings Checks
   await page.setViewportSize({ width: 1280, height: 720 });

@@ -129,6 +129,8 @@ body.orient-force-portrait #app {
   border-bottom: 1px solid rgba(212, 175, 55, 0.25);
   z-index: 50;
   flex: none;
+  gap: 8px;
+  overflow: hidden;
 }
 
 .toolbar-brand {
@@ -139,6 +141,8 @@ body.orient-force-portrait #app {
   font-weight: bold;
   color: var(--gold-light);
   letter-spacing: 1px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .toolbar-brand .logo-icon {
@@ -151,12 +155,23 @@ body.orient-force-portrait #app {
   display: flex;
   align-items: center;
   gap: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .toolbar-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  min-width: 0;
+}
+
+.toolbar-actions::-webkit-scrollbar {
+  display: none;
 }
 
 .tb-btn {
@@ -171,6 +186,8 @@ body.orient-force-portrait #app {
   display: flex;
   align-items: center;
   gap: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .tb-btn:hover {
@@ -187,6 +204,7 @@ body.orient-force-portrait #app {
 /* ================= The Luxury Mahjong Arena ================= */
 .table-arena {
   flex: 1;
+  min-height: 0;
   position: relative;
   display: flex;
   align-items: center;
@@ -209,8 +227,8 @@ body.orient-force-portrait #app {
     inset 0 0 80px rgba(0, 0, 0, 0.65),
     0 12px 36px rgba(0, 0, 0, 0.7);
   display: grid;
-  grid-template-rows: auto 1fr auto;
-  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   overflow: hidden;
 }
 
@@ -234,6 +252,8 @@ body.orient-force-portrait #app {
   justify-content: center;
   position: relative;
   z-index: 10;
+  min-height: 0;
+  min-width: 0;
 }
 
 .compass-disc {
@@ -576,6 +596,7 @@ body.orient-force-portrait #app {
   justify-content: center;
   gap: 6px;
   padding-left: 8px;
+  min-height: 0;
 }
 
 .seat-container-right {
@@ -587,6 +608,7 @@ body.orient-force-portrait #app {
   justify-content: center;
   gap: 6px;
   padding-right: 8px;
+  min-height: 0;
 }
 
 /* Melds and Flower Rows for Opponents */
@@ -1274,7 +1296,7 @@ body.orient-force-portrait #app {
   flex-direction: column;
   gap: 14px;
   position: relative;
-  max-height: 90dvh;
+  max-height: calc(100% - 16px);
   overflow-y: auto;
 }
 
@@ -1732,35 +1754,68 @@ body.orient-force-portrait #app {
   opacity: 0.7;
 }
 
-/* ================= Compact Screen & Mobile Landscape Tweaks ================= */
-@media (max-height: 520px) {
+/* ================= Compact Screen & Mobile Landscape / Auto-Rotated Portrait Tweaks ================= */
+@media (max-height: 540px), (orientation: portrait) and (max-width: 540px) {
   :root {
-    --human-tile-w: clamp(24px, 3.8vw, 36px);
+    --human-tile-w: clamp(26px, 3.8vmax, 36px);
     --human-tile-h: calc(var(--human-tile-w) * 1.34);
-    --pool-tile-w: clamp(12px, 1.7vw, 16px);
+    --pool-tile-w: clamp(12px, 1.7vmax, 16px);
     --pool-tile-h: calc(var(--pool-tile-w) * 1.32);
-    --opp-tile-w: clamp(12px, 1.6vw, 16px);
+    --opp-tile-w: clamp(12px, 1.6vmax, 16px);
     --opp-tile-h: calc(var(--opp-tile-w) * 1.32);
+  }
+
+  /* When user explicitly forces unrotated vertical mode (保持竖屏), fit all 14 hand tiles across physical width */
+  body.orient-force-portrait {
+    --human-tile-w: clamp(20px, calc((100vw - 26px) / 14.6), 34px);
+    --human-tile-h: calc(var(--human-tile-w) * 1.36);
+    --pool-tile-w: clamp(12px, 3.2vw, 16px);
+    --pool-tile-h: calc(var(--pool-tile-w) * 1.32);
+    --opp-tile-w: clamp(11px, 2.8vw, 15px);
+    --opp-tile-h: calc(var(--opp-tile-w) * 1.32);
+  }
+  body.orient-force-portrait .chat-pill-btn {
+    bottom: calc(var(--human-tile-h) + 54px) !important;
+    right: 10px !important;
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 16px !important;
+  }
+  body.orient-force-portrait .chat-popup {
+    bottom: calc(var(--human-tile-h) + 98px) !important;
+    right: 10px !important;
   }
 
   .top-toolbar {
     height: 30px !important;
     padding: 0 8px !important;
+    gap: 4px !important;
   }
-  .app-logo {
+  .toolbar-brand {
     font-size: 13px !important;
     gap: 4px !important;
   }
+  .toolbar-brand .logo-icon {
+    font-size: 14px !important;
+  }
+  .toolbar-actions {
+    gap: 4px !important;
+  }
   .tb-btn {
-    padding: 2px 7px !important;
+    padding: 2px 6px !important;
     font-size: 11px !important;
+    gap: 2px !important;
   }
   .table-arena {
     padding: 2px 4px !important;
   }
   .table-surface {
-    border-width: 6px !important;
+    border-width: 5px !important;
     border-radius: 14px !important;
+  }
+  .table-surface::before {
+    inset: 6px !important;
+    border-radius: 10px !important;
   }
 
   /* Top player: make avatar, flowers, melds, and hand inline so it occupies minimal vertical height */
@@ -1768,16 +1823,16 @@ body.orient-force-portrait #app {
     flex-direction: row !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 8px !important;
+    gap: 6px !important;
     padding-top: 2px !important;
   }
   .seat-container-top .seat-badge {
     padding: 2px 8px 2px 4px !important;
   }
   .seat-avatar {
-    width: 26px !important;
-    height: 26px !important;
-    font-size: 12px !important;
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 11px !important;
   }
   .seat-name, .seat-score {
     font-size: 11px !important;
@@ -1796,35 +1851,39 @@ body.orient-force-portrait #app {
     margin-top: 0 !important;
   }
   .pool-mid-row {
-    gap: 6px !important;
+    gap: 4px !important;
   }
   .compass-disc {
-    width: 48px !important;
-    height: 48px !important;
+    width: 44px !important;
+    height: 44px !important;
   }
   .timer-number {
-    font-size: 13px !important;
+    font-size: 12px !important;
   }
   .wall-count-badge {
-    font-size: 9px !important;
-    margin-top: 1px !important;
+    font-size: 8.5px !important;
+    margin-top: 0 !important;
   }
   .wind-marker {
-    font-size: 10px !important;
+    font-size: 9.5px !important;
   }
 
   /* Left and Right opponents */
   .seat-container-left, .seat-container-right {
-    gap: 3px !important;
+    gap: 2px !important;
     padding: 0 4px !important;
   }
+  .opp-hand-backs.vertical {
+    max-height: 112px !important;
+  }
   .opp-hand-backs.vertical .mj-tile {
-    height: 10px !important;
+    height: 8.5px !important;
+    max-height: 8.5px !important;
   }
 
   /* Bottom (Human) Player Area */
   .seat-container-bottom {
-    padding-bottom: max(4px, env(safe-area-inset-bottom, 4px)) !important;
+    padding-bottom: max(3px, env(safe-area-inset-bottom, 3px)) !important;
     gap: 0 !important;
     position: relative !important;
     flex-shrink: 0 !important;
@@ -1832,9 +1891,9 @@ body.orient-force-portrait #app {
   .human-top-row {
     position: absolute !important;
     bottom: calc(var(--human-tile-h) + 4px) !important;
-    left: 8px !important;
-    right: 8px !important;
-    width: calc(100% - 16px) !important;
+    left: 6px !important;
+    right: 6px !important;
+    width: calc(100% - 12px) !important;
     max-width: none !important;
     padding: 0 !important;
     margin: 0 !important;
@@ -1849,6 +1908,20 @@ body.orient-force-portrait #app {
   }
   .human-top-row .seat-badge {
     padding: 2px 8px 2px 4px !important;
+  }
+  .turn-prompt-banner {
+    position: absolute !important;
+    bottom: calc(var(--human-tile-h) + 6px) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    padding: 2px 10px !important;
+    font-size: 11px !important;
+    white-space: nowrap !important;
+    z-index: 38 !important;
+  }
+  @keyframes promptPulse {
+    from { transform: translateX(-50%) scale(1); }
+    to { transform: translateX(-50%) scale(1.02); }
   }
   .action-bar-container {
     position: absolute !important;
@@ -1888,11 +1961,12 @@ body.orient-force-portrait #app {
     flex-shrink: 0 !important;
   }
 
-  /* Compact Mode Select for Mobile Landscape */
+  /* Compact Mode Select for Mobile Landscape / Rotated Portrait */
   .mode-select-card {
     padding: 8px 16px !important;
     gap: 6px !important;
-    max-height: 96dvh !important;
+    max-height: calc(100% - 12px) !important;
+    overflow-y: auto !important;
   }
   .mode-logo-emblem {
     display: none !important;

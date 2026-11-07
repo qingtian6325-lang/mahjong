@@ -14,7 +14,7 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   <title>麻将大师 · 豪华翡翠雀台</title>
-  <link rel="stylesheet" href="./style.css?v=2.5.3" />
+  <link rel="stylesheet" href="./style.css?v=2.5.4" />
 </head>
 <body>
   <!-- Mobile Orientation (Auto-rotated via CSS; Guard disabled for seamless play) -->
@@ -188,7 +188,7 @@
         <div class="chat-item">快点出牌啊，花儿都谢了！</div>
         <div class="chat-item">手气太旺了，谁来挡我？</div>
         <div class="chat-item">碰得漂亮！多谢各位！</div>
-        <div class="chat-item">这把我要自摸，通通给钱～</div>
+        <div class="chat-item">这把我要自摸，通通给钱！</div>
         <div class="chat-item">不要慌，牌局才刚刚开始。</div>
         <div class="chat-item">这牌也能点炮？太可惜了！</div>
       </div>
@@ -554,17 +554,17 @@
   <!-- Supabase Realtime SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Game Scripts -->
-  <script src="./audio.js?v=2.5.3"></script>
-  <script src="./engine.js?v=2.5.3"></script>
-  <script src="./network.js?v=2.5.3"></script>
-  <script src="./qr.js?v=2.5.3"></script>
-  <script src="./app.js?v=2.5.3"></script>
+  <script src="./audio.js?v=2.5.4"></script>
+  <script src="./engine.js?v=2.5.4"></script>
+  <script src="./network.js?v=2.5.4"></script>
+  <script src="./qr.js?v=2.5.4"></script>
+  <script src="./app.js?v=2.5.4"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=2.5.3').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=2.5.4').then(function(reg) {
           reg.update();
         }).catch(function(e) {
           console.log('SW register failed: ', e);
